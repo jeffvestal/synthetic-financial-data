@@ -14,8 +14,10 @@ dist/
 downloads/
 eggs/
 .eggs/
-lib/
+# lib/ - REMOVED: Our project uses lib/ for source code modules
 lib64/
+# Only ignore Python installation lib directories, not our project's lib/
+lib/python*/
 parts/
 sdist/
 var/
