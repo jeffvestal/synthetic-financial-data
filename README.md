@@ -82,9 +82,35 @@ synthetic-financial-data/
 ## 🚀 Installation
 
 ### Prerequisites
-- Python 3.7+
+- Python 3.8+
 - Elasticsearch 8.0+ (optional, for data ingestion)
 - Google Gemini API key
+
+### Option 1: Automated Setup (Recommended)
+Use the automated setup script that creates a virtual environment and installs all dependencies:
+
+```bash
+git clone https://github.com/yourusername/synthetic-financial-data.git
+cd synthetic-financial-data
+python3 setup.py
+```
+
+The setup script will:
+- ✅ Create a virtual environment in `venv/`
+- ✅ Upgrade pip to the latest version
+- ✅ Install all required dependencies
+- ✅ Provide activation instructions
+
+After setup completes, activate the virtual environment:
+```bash
+# On macOS/Linux
+source venv/bin/activate
+
+# On Windows
+venv\Scripts\activate
+```
+
+### Option 2: Manual Installation
 
 ### Step 1: Clone the Repository
 ```bash
@@ -92,7 +118,13 @@ git clone https://github.com/yourusername/synthetic-financial-data.git
 cd synthetic-financial-data
 ```
 
-### Step 2: Install Dependencies
+### Step 2: Create Virtual Environment (Optional but Recommended)
+```bash
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+### Step 3: Install Dependencies
 ```bash
 pip install -r requirements.txt
 ```
@@ -126,6 +158,13 @@ export ES_API_KEY="your_elasticsearch_api_key_here"
 ### Step 4: Verify Installation
 ```bash
 python3 control.py --status
+```
+
+**Note**: Always remember to activate your virtual environment before working with the project:
+```bash
+source venv/bin/activate  # On macOS/Linux
+# or
+venv\Scripts\activate     # On Windows
 ```
 
 ## ⚙️ Configuration
