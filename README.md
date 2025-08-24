@@ -2,6 +2,9 @@
 
 A powerful Python toolkit for generating realistic synthetic financial data for testing, demos, and development. Create thousands of accounts, holdings, news articles, and reports with AI-generated content, all ready for ingestion into Elasticsearch.
 
+
+![Header Image](synthetic-financial-data-header.png "Synthetic Financial Data Generator")
+
 ## 📋 Table of Contents
 - [Overview](#overview)
 - [Features](#features)
