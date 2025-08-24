@@ -104,6 +104,12 @@ class SyntheticDataController:
             self._trigger_events(interactive=False, event_type=args.trigger_event)
         elif args.status:
             self._check_status()
+        elif args.check_indices:
+            self._check_indices()
+        elif args.update_timestamps:
+            self._update_timestamps(args.timestamp_offset)
+        elif args.update_files:
+            self._update_data_files(args.timestamp_offset)
         else:
             self.console.print("❌ [red]No valid action specified for non-interactive mode[/red]")
     
@@ -165,6 +171,18 @@ class SyntheticDataController:
     def _check_status(self):
         """Display current system status and configuration."""
         self.menu_system.show_status(self.config_manager)
+    
+    def _check_indices(self):
+        """Check and display Elasticsearch index status only."""
+        self.menu_system.show_index_status_only()
+    
+    def _update_timestamps(self, offset_hours=0):
+        """Update timestamps in Elasticsearch indices."""
+        self.menu_system.update_elasticsearch_timestamps(offset_hours)
+    
+    def _update_data_files(self, offset_hours=0):
+        """Update timestamps in data files."""
+        self.menu_system.update_data_file_timestamps(offset_hours)
     
     def _manage_indices(self):
         """Manage Elasticsearch indices."""
@@ -275,7 +293,9 @@ class SyntheticDataController:
             'ingest_elasticsearch': args.elasticsearch,
             'num_accounts': args.num_accounts,
             'num_news': args.num_news,
-            'num_reports': args.num_reports
+            'num_reports': args.num_reports,
+            'update_timestamps_on_load': args.update_timestamps_on_load if hasattr(args, 'update_timestamps_on_load') else False,
+            'timestamp_offset': args.timestamp_offset if hasattr(args, 'timestamp_offset') else 0
         }
         self._execute_generation(config)
 
@@ -290,7 +310,11 @@ Examples:
   python control.py --quick-start             # Quick start with defaults
   python control.py --custom --accounts --news --num-accounts 100
   python control.py --trigger-event bad_news  # Trigger bad news event
-  python control.py --status                  # Show status only
+  python control.py --status                  # Show full system status
+  python control.py --check-indices           # Check ES indices only
+  python control.py --update-timestamps       # Update timestamps in ES to now
+  python control.py --update-timestamps --timestamp-offset -24  # 24 hours ago
+  python control.py --custom --elasticsearch --update-timestamps-on-load  # Load with current timestamps
         """
     )
     
@@ -306,6 +330,8 @@ Examples:
                        help="Generate reports")
     parser.add_argument("--elasticsearch", action="store_true",
                        help="Ingest to Elasticsearch")
+    parser.add_argument("--update-timestamps-on-load", action="store_true",
+                       help="Update timestamps to current time during data loading")
     parser.add_argument("--num-accounts", type=int, default=7000,
                        help="Number of accounts to generate")
     parser.add_argument("--num-news", type=int, default=500,
@@ -316,6 +342,14 @@ Examples:
                        help="Trigger a specific event type")
     parser.add_argument("--status", action="store_true",
                        help="Show system status and exit")
+    parser.add_argument("--check-indices", action="store_true",
+                       help="Check Elasticsearch index status only")
+    parser.add_argument("--update-timestamps", action="store_true",
+                       help="Update timestamps in Elasticsearch to current time")
+    parser.add_argument("--timestamp-offset", type=int, default=0,
+                       help="Hours offset from now (negative for past, positive for future)")
+    parser.add_argument("--update-files", action="store_true",
+                       help="Update timestamps in data files before loading")
     
     return parser
 

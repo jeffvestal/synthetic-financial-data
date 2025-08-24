@@ -34,7 +34,8 @@ synthetic-financial-data/
 │   ├── menu_system.py            # Interactive menus with Rich UI
 │   ├── config_manager.py         # Configuration and presets management
 │   ├── task_executor.py          # Task execution with live progress
-│   └── index_manager.py          # 🗄️ Elasticsearch index management
+│   ├── index_manager.py          # 🗄️ Elasticsearch index management
+│   └── timestamp_updater.py      # 🕐 Timestamp update operations
 ├── elasticsearch/                # 🔍 Elasticsearch configuration
 │   └── index_mappings.json       # Complete index mappings for all 5 indices
 ├── prompts/                      # 🤖 AI prompt templates for content generation
@@ -70,12 +71,35 @@ synthetic-financial-data/
 - **📊 Task Executor** (`lib/task_executor.py`): Advanced execution engine with live progress dashboard and concurrent task monitoring  
 - **🤖 AI Integration** (`common_utils.py`): Gemini API integration with retry logic and error handling
 - **💾 Symbol Management** (`symbol_manager.py`): Advanced symbol filtering by sector, index membership, and random selection
+- **🕐 Timestamp Management** (`lib/timestamp_updater.py`): Updates document timestamps in Elasticsearch or data files to current time with optional offsets
 - **📈 Generation Scripts**:
   - `generate_holdings_accounts.py`: Creates accounts, holdings, and asset details
   - `generate_reports_and_news_new.py`: Generates news articles and financial reports
   - `trigger_bad_news_event.py`: Creates controlled negative market events for demos
 
 ## Development Commands
+
+### Operations Without Gemini API Key
+
+Many operations can be performed without a Gemini API key:
+
+**Available without Gemini key:**
+- `control.py --status` - Check system status
+- `control.py --check-indices` - Check Elasticsearch index status
+- `control.py --custom --elasticsearch` - Load existing data to ES
+- `control.py --update-timestamps` - Update ES document timestamps
+- `control.py --update-files` - Update data file timestamps
+- Interactive index management (option 5 in menu)
+- Configuration management (option 6 in menu)
+- Viewing existing data files
+
+**Requires Gemini key:**
+- `control.py --quick-start` - Generate new data
+- `control.py --custom --accounts` - Generate accounts
+- `control.py --custom --news` - Generate news
+- `control.py --custom --reports` - Generate reports  
+- `control.py --trigger-event` - Trigger market events
+- Any operation that creates new synthetic content
 
 ### Interactive Control Script (Recommended)
 
@@ -94,7 +118,12 @@ python3 control.py --custom --accounts --num-accounts 100  # Custom generation
 python3 control.py --trigger-event bad_news         # Trigger bad news event
 python3 control.py --trigger-event market_crash     # Trigger market crash scenario
 python3 control.py --trigger-event volatility       # Trigger volatility spike
-python3 control.py --status                         # Show system status
+python3 control.py --status                         # Show full system status
+python3 control.py --check-indices                  # Check ES index status only
+python3 control.py --update-timestamps              # Update ES timestamps to now
+python3 control.py --update-timestamps --timestamp-offset -24  # Set timestamps to 24 hours ago
+python3 control.py --update-files --timestamp-offset 168       # Update file timestamps to 1 week in future
+python3 control.py --custom --elasticsearch --update-timestamps-on-load  # Update timestamps during loading
 python3 control.py --help                          # Show all options
 ```
 
@@ -129,8 +158,10 @@ import os
 os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
 os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 
-# Setup indices and load existing data files
-!python3 control.py --status
+# Check if Elasticsearch indices are properly setup
+!python3 control.py --check-indices
+
+# Load existing data files to Elasticsearch
 !python3 control.py --custom --elasticsearch
 ```
 
@@ -173,10 +204,25 @@ python3 scripts/list_models.py
 
 ### Environment Setup
 
-Required environment variables (set in `.env` file or environment):
-- `GEMINI_API_KEY`: Google Gemini API key for content generation
-- `ES_API_KEY`: Elasticsearch API key (optional, for data ingestion)
+Environment variables can be set in `.env` file or exported directly:
+
+**API Key Requirements by Use Case:**
+
+| Use Case | GEMINI_API_KEY | ES_API_KEY | ES_ENDPOINT_URL |
+|----------|----------------|------------|-----------------|
+| Generate new data | ✅ Required | Optional | Optional |
+| Load existing data to ES | ❌ Not needed | ✅ Required | ✅ Required |
+| Check local data files | ❌ Not needed | ❌ Not needed | ❌ Not needed |
+| Update ES timestamps | ❌ Not needed | ✅ Required | ✅ Required |
+| Update file timestamps | ❌ Not needed | ❌ Not needed | ❌ Not needed |
+| Trigger market events | ✅ Required | Optional | Optional |
+
+**Environment Variables:**
+- `GEMINI_API_KEY`: Google Gemini API key (only for generating new content)
+- `ES_API_KEY`: Elasticsearch API key (only for ES operations)
 - `ES_ENDPOINT_URL`: Elasticsearch endpoint (defaults to https://localhost:9200)
+
+**Note:** When running `control.py --status`, missing GEMINI_API_KEY will show a warning but won't prevent loading existing data
 
 ### Python Dependencies
 
@@ -262,6 +308,103 @@ manager = IndexManager(es_client)
 status = manager.get_index_status('financial_accounts')
 manager.recreate_index('financial_news')
 ```
+
+## Timestamp Management
+
+The system provides comprehensive timestamp management capabilities to keep data current and simulate different time scenarios for demos and testing.
+
+### Timestamp Update Operations
+
+**Update Elasticsearch Documents:**
+```bash
+# Update all document timestamps to current time
+python3 control.py --update-timestamps
+
+# Set timestamps to 24 hours ago  
+python3 control.py --update-timestamps --timestamp-offset -24
+
+# Set timestamps to 1 week in the future
+python3 control.py --update-timestamps --timestamp-offset 168
+```
+
+**Update Data Files Before Loading:**
+```bash
+# Update file timestamps before loading to ES
+python3 control.py --update-files --timestamp-offset -12
+
+# Update timestamps during data loading (in-flight)
+python3 control.py --custom --elasticsearch --update-timestamps-on-load
+
+# Load with specific timestamp offset
+python3 control.py --custom --elasticsearch --update-timestamps-on-load --timestamp-offset 72
+```
+
+**Interactive Management:**
+```bash
+python3 control.py
+# Select option 5: Manage Indices
+# Choose timestamp update options from menu
+```
+
+### Supported Timestamp Fields
+
+The system automatically identifies and updates the following timestamp fields for each data type:
+
+- **`financial_accounts`**: `last_updated`
+- **`financial_holdings`**: `last_updated`, `purchase_date`
+- **`financial_asset_details`**: `last_updated`, `current_price.last_updated`
+- **`financial_news`**: `last_updated`, `published_date`
+- **`financial_reports`**: `last_updated`, `published_date`
+
+### Programming Interface
+
+```python
+from lib.timestamp_updater import TimestampUpdater
+
+# Update all ES indices to current time
+results = TimestampUpdater.update_all_indices(es_client, offset_hours=0)
+
+# Update specific index with offset
+result = TimestampUpdater.update_elasticsearch_index(
+    es_client, 'financial_news', offset_hours=-24
+)
+
+# Update document timestamps in-flight
+updated_doc = TimestampUpdater.update_document_timestamps(
+    document, doc_type='news', offset_hours=12
+)
+
+# Update JSONL file timestamps
+count = TimestampUpdater.update_file_timestamps(
+    'generated_data/generated_news.jsonl', 
+    doc_type='news', 
+    offset_hours=-48
+)
+```
+
+### Use Cases
+
+**Demo Preparation:**
+- Make historical data appear current for live demos
+- Create realistic time sequences for storytelling
+- Simulate different market timing scenarios
+
+**Testing & Development:**
+- Test time-sensitive features with controlled timestamps
+- Create data that appears to be generated at different times
+- Validate time-based queries and filters
+
+**Data Refresh:**
+- Keep synthetic datasets current without regenerating content
+- Update existing Elasticsearch indices quickly
+- Maintain data freshness for ongoing development
+
+### Performance Notes
+
+- **Bulk Updates**: ES updates use `update_by_query` API for efficient bulk operations
+- **Index Refresh**: Indices are refreshed after timestamp updates for immediate query availability
+- **Conflict Handling**: Updates proceed even if some documents fail (conflicts='proceed')
+- **Memory Efficient**: File updates process line-by-line without loading entire datasets
 
 ## Configuration Points
 

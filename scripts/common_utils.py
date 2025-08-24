@@ -214,7 +214,8 @@ def create_elasticsearch_client() -> Elasticsearch:
         print(f"ERROR: Could not connect to Elasticsearch. Please check your Endpoint URL and API Key. Error: {e}")
         raise
 
-def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str, batch_size: int) -> Generator[Dict[str, Any], None, None]:
+def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str, batch_size: int,
+                              update_timestamps: bool = False, timestamp_offset: int = 0) -> Generator[Dict[str, Any], None, None]:
     """
     Generator to read documents from a JSONL file in chunks for ES ingestion.
     
@@ -223,6 +224,8 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
         index_name (str): ES index name
         id_key_in_doc (str): Field name to use as document ID
         batch_size (int): Number of documents per batch
+        update_timestamps (bool): Whether to update timestamps before ingestion
+        timestamp_offset (int): Hours to offset timestamps
         
     Yields:
         dict: Elasticsearch action documents
@@ -235,6 +238,24 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
             for line_num, line in enumerate(f, 1):
                 try:
                     doc = json.loads(line)
+                    
+                    # Update timestamps if requested
+                    if update_timestamps:
+                        # Import here to avoid circular dependency
+                        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib'))
+                        from timestamp_updater import TimestampUpdater
+                        
+                        # Infer doc type from index name
+                        doc_type_map = {
+                            'financial_accounts': 'accounts',
+                            'financial_holdings': 'holdings',
+                            'financial_asset_details': 'asset_details',
+                            'financial_news': 'news',
+                            'financial_reports': 'reports'
+                        }
+                        doc_type = doc_type_map.get(index_name, 'unknown')
+                        doc = TimestampUpdater.update_document_timestamps(doc, doc_type, timestamp_offset)
+                    
                     action = {
                         "_index": index_name,
                         "_id": doc[id_key_in_doc],
@@ -270,7 +291,8 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
 
 def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, id_field_in_doc: str, 
                      batch_size: Optional[int] = None, timeout: Optional[int] = None, 
-                     ensure_index: bool = True) -> None:
+                     ensure_index: bool = True, update_timestamps: bool = False,
+                     timestamp_offset: int = 0) -> None:
     """
     Ingest data from a JSONL file into Elasticsearch using the bulk API.
     
@@ -282,6 +304,8 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         batch_size (int, optional): Batch size for bulk operations
         timeout (int, optional): Request timeout in seconds
         ensure_index (bool): Whether to ensure index exists before ingestion
+        update_timestamps (bool): Whether to update timestamps to current time
+        timestamp_offset (int): Hours to offset timestamps from now
     """
     batch_size = batch_size or ES_CONFIG['bulk_batch_size']
     timeout = timeout or ES_CONFIG['request_timeout']
@@ -304,11 +328,15 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         except Exception as e:
             print(f"[{initial_timestamp}] Warning: Error checking index '{index_name}': {e}. Proceeding anyway...")
 
+    if update_timestamps:
+        print(f"[{initial_timestamp}] Timestamps will be updated during ingestion (offset: {timestamp_offset} hours)")
+    
     print(f"\n[{initial_timestamp}] Starting ingestion from '{filepath}' into index '{index_name}'...")
     try:
         success, failed = helpers.bulk(
             es_client,
-            _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size),
+            _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
+                                    update_timestamps, timestamp_offset),
             chunk_size=batch_size,
             request_timeout=timeout,
             raise_on_error=False
