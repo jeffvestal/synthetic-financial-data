@@ -13,9 +13,15 @@ import signal
 import argparse
 from typing import Dict, Any, Optional
 
-# Add lib and scripts to path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'scripts'))
+# Add lib and scripts to path with absolute path resolution
+script_dir = os.path.dirname(os.path.abspath(__file__))
+lib_path = os.path.join(script_dir, 'lib')
+scripts_path = os.path.join(script_dir, 'scripts')
+
+if os.path.exists(lib_path):
+    sys.path.insert(0, lib_path)
+if os.path.exists(scripts_path):
+    sys.path.insert(0, scripts_path)
 
 try:
     from rich.console import Console
