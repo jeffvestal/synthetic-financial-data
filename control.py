@@ -13,15 +13,39 @@ import signal
 import argparse
 from typing import Dict, Any, Optional
 
-# Add lib and scripts to path with absolute path resolution
-script_dir = os.path.dirname(os.path.abspath(__file__))
-lib_path = os.path.join(script_dir, 'lib')
-scripts_path = os.path.join(script_dir, 'scripts')
+# Add lib and scripts to path with robust resolution for all environments
+def setup_module_paths():
+    """Setup module paths for both local and notebook environments."""
+    # Try multiple path resolution strategies
+    possible_script_dirs = [
+        os.path.dirname(os.path.abspath(__file__)),  # Standard approach
+        os.path.dirname(os.path.realpath(__file__)),  # Follow symlinks
+        os.getcwd(),  # Current working directory (Colab fallback)
+        os.path.dirname(os.getcwd())  # Parent of current directory
+    ]
+    
+    for script_dir in possible_script_dirs:
+        lib_path = os.path.join(script_dir, 'lib')
+        scripts_path = os.path.join(script_dir, 'scripts')
+        
+        # Check if this looks like our project directory
+        if (os.path.exists(lib_path) and 
+            os.path.exists(os.path.join(lib_path, 'menu_system.py')) and
+            os.path.exists(os.path.join(lib_path, 'config_manager.py'))):
+            
+            sys.path.insert(0, lib_path)
+            if os.path.exists(scripts_path):
+                sys.path.insert(0, scripts_path)
+            return True
+    
+    return False
 
-if os.path.exists(lib_path):
-    sys.path.insert(0, lib_path)
-if os.path.exists(scripts_path):
-    sys.path.insert(0, scripts_path)
+# Setup paths before any local imports
+if not setup_module_paths():
+    print("❌ Could not locate project modules. Ensure you're running from the project directory.")
+    print("Current working directory:", os.getcwd())
+    print("Script location:", __file__)
+    sys.exit(1)
 
 try:
     from rich.console import Console
@@ -176,7 +200,7 @@ class SyntheticDataController:
     
     def _check_status(self):
         """Display current system status and configuration."""
-        self.menu_system.show_status(self.config_manager)
+        self.menu_system.show_status(self.config_manager, interactive=False)
     
     def _check_indices(self):
         """Check and display Elasticsearch index status only."""
