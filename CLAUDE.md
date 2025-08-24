@@ -92,6 +92,8 @@ python3 control.py
 python3 control.py --quick-start                    # Generate all with defaults
 python3 control.py --custom --accounts --num-accounts 100  # Custom generation
 python3 control.py --trigger-event bad_news         # Trigger bad news event
+python3 control.py --trigger-event market_crash     # Trigger market crash scenario
+python3 control.py --trigger-event volatility       # Trigger volatility spike
 python3 control.py --status                         # Show system status
 python3 control.py --help                          # Show all options
 ```
@@ -107,12 +109,47 @@ python3 control.py --help                          # Show all options
 8. **🚪 Exit** - Exit the application
 
 **Advanced Features:**
-- **Live Progress Dashboard**: Real-time status with multiple concurrent progress bars and task monitoring
+- **Live Progress Dashboard**: Real-time progress tracking with script output parsing and concurrent task monitoring
+- **Interactive Configuration Editing**: Full in-app configuration management with validation and real-time updates
+- **Elasticsearch Connection Testing**: Live connectivity validation with cluster health and version information
+- **Multiple Event Types**: Three distinct market event scenarios (bad news, market crash, volatility) with different content patterns
 - **Automatic Index Creation**: All Elasticsearch indices created with proper mappings before data ingestion
 - **Configuration Presets**: Built-in presets (Small Demo: 100 accounts, Full Dataset: 7K accounts, Test Mode: 10 accounts)
 - **Environment Validation**: Comprehensive checks for API keys, file paths, and system requirements
 - **Error Handling**: Graceful error recovery with detailed error messages and retry logic
 - **Batch Operations**: Queue multiple tasks and execute them concurrently with status tracking
+
+### Jupyter Notebook Integration
+
+For programmatic usage in Jupyter notebooks or automated workflows:
+
+**Data Loading Only (No AI Key Required):**
+```python
+import os
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
+os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
+
+# Setup indices and load existing data files
+!python3 control.py --status
+!python3 control.py --custom --elasticsearch
+```
+
+**Full Generation with AI (Requires Gemini API Key):**
+```python
+import os
+os.environ['GEMINI_API_KEY'] = 'your_gemini_api_key_here' 
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
+os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
+
+# Generate complete dataset
+!python3 control.py --quick-start
+
+# Or custom generation
+!python3 control.py --custom --accounts --news --num-accounts 1000
+
+# Trigger market events
+!python3 control.py --trigger-event market_crash
+```
 
 ### Direct Script Execution
 
@@ -125,8 +162,10 @@ python3 scripts/generate_holdings_accounts.py
 # Generate news and reports
 python3 scripts/generate_reports_and_news_new.py
 
-# Trigger a controlled bad news event
-python3 scripts/trigger_bad_news_event.py
+# Trigger controlled market events
+python3 scripts/trigger_bad_news_event.py --event-type bad_news      # Targeted negative news
+python3 scripts/trigger_bad_news_event.py --event-type market_crash  # Broad market crash
+python3 scripts/trigger_bad_news_event.py --event-type volatility    # Market volatility spike
 
 # List available Gemini models
 python3 scripts/list_models.py
@@ -250,6 +289,77 @@ manager.recreate_index('financial_news')
    ES_API_KEY=your_es_key_here  
    ES_ENDPOINT_URL=https://localhost:9200
    ```
+
+## Event System
+
+### Market Event Types
+
+The system supports three distinct market event types for demo and testing purposes:
+
+**1. Bad News Event (`bad_news`)**
+- **Target**: Specific companies (TSLA for news, FCX for reports)
+- **Sentiment**: Negative
+- **Scope**: Targeted, company-specific negative events
+- **Content**: Recalls, production issues, regulatory problems
+- **Volume**: Standard controlled generation amounts
+
+**2. Market Crash Event (`market_crash`)**
+- **Target**: Broad market ETFs (SPY, QQQ) and sector indices
+- **Sentiment**: Very negative
+- **Scope**: Market-wide systemic crisis
+- **Content**: Economic uncertainty, widespread selloffs, sector declines
+- **Volume**: Double the standard amounts (more articles and reports)
+- **Additional Symbols**: VTI, IWM, XLF, XLE (broad market coverage)
+
+**3. Volatility Event (`volatility`)**
+- **Target**: Volatility instruments (VIX, UVXY)
+- **Sentiment**: Neutral with mixed volatile sentiment
+- **Scope**: Market uncertainty with mixed directional impact
+- **Content**: Geopolitical tensions, economic data uncertainty, trading opportunities
+- **Volume**: Triple general news (more market commentary)
+- **Additional Symbols**: SVXY, VIXY, TVIX (volatility-related instruments)
+
+### Event Configuration
+
+All event configurations are defined in `scripts/config.py` in the `EVENT_CONFIGS` dictionary:
+
+```python
+EVENT_CONFIGS = {
+    'bad_news': {
+        'target_news_symbol': 'TSLA',
+        'news_theme': "major recall impacting new vehicle launches",
+        'sentiment': "negative"
+    },
+    'market_crash': {
+        'target_news_symbol': 'SPY', 
+        'news_theme': "widespread market selloff triggered by economic uncertainty",
+        'sentiment': "very negative",
+        'market_wide_impact': True
+    },
+    # ... more configurations
+}
+```
+
+### Usage Examples
+
+**Interactive Mode:**
+```bash
+python3 control.py
+# Select option 3: Trigger Events
+# Choose from bad_news, market_crash, or volatility
+```
+
+**Command Line:**
+```bash
+python3 control.py --trigger-event bad_news
+python3 control.py --trigger-event market_crash  
+python3 control.py --trigger-event volatility
+```
+
+**Direct Script:**
+```bash
+python3 scripts/trigger_bad_news_event.py --event-type market_crash
+```
 
 ## Development Patterns
 

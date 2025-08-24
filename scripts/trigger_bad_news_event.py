@@ -12,7 +12,7 @@ from tqdm import tqdm
 # Local imports  
 from config import (
     ES_CONFIG, FILE_PATHS, GENERATION_SETTINGS, CONTENT_SETTINGS,
-    FIELD_NAMES, GEMINI_CONFIG, BAD_EVENT_CONFIG, validate_config
+    FIELD_NAMES, GEMINI_CONFIG, BAD_EVENT_CONFIG, EVENT_CONFIGS, validate_config
 )
 from symbols_config import (
     STOCK_SYMBOLS_AND_INFO, ETF_SYMBOLS_AND_INFO, get_asset_info, ALL_ASSET_SYMBOLS
@@ -325,11 +325,56 @@ def generate_controlled_reports(num_specific: int, num_thematic: int, output_fil
     return reports_generated
 
 
-# --- Main Execution ---
-if __name__ == "__main__":
-    log_with_timestamp("Starting controlled bad news event generation process...")
-
-    # --- Control Flags ---
+def run_event_generation(event_type='bad_news'):
+    """
+    Run event generation with specified event type.
+    
+    Args:
+        event_type (str): Type of event to generate ('bad_news', 'market_crash', 'volatility')
+    """
+    global BAD_EVENT_TARGET_NEWS_SYMBOL, BAD_EVENT_NEWS_THEME, BAD_EVENT_TARGET_REPORT_SYMBOL
+    global BAD_EVENT_REPORT_FOCUS, BAD_EVENT_SENTIMENT
+    
+    # Get event configuration
+    if event_type not in EVENT_CONFIGS:
+        print(f"❌ Unknown event type: {event_type}")
+        print(f"Available event types: {list(EVENT_CONFIGS.keys())}")
+        return
+    
+    event_config = EVENT_CONFIGS[event_type]
+    print(f"\\n🎯 Triggering {event_type.replace('_', ' ').title()} Event")
+    print(f"📋 Description: {event_config['description']}")
+    
+    log_with_timestamp(f"Starting controlled {event_type.replace('_', ' ')} event generation process...")
+    
+    # Update global variables with event-specific configuration
+    BAD_EVENT_TARGET_NEWS_SYMBOL = event_config['target_news_symbol']
+    BAD_EVENT_NEWS_THEME = event_config['news_theme']
+    BAD_EVENT_TARGET_REPORT_SYMBOL = event_config['target_report_symbol']
+    BAD_EVENT_REPORT_FOCUS = event_config['report_focus']
+    BAD_EVENT_SENTIMENT = event_config['sentiment']
+    
+    # Generate flags based on event type
+    if event_type == 'market_crash':
+        # Market crash generates more content across multiple assets
+        NUM_SPECIFIC_NEWS = GENERATION_SETTINGS['controlled']['num_specific_news'] * 2
+        NUM_GENERAL_NEWS = GENERATION_SETTINGS['controlled']['num_general_news'] * 2
+        NUM_SPECIFIC_REPORTS = GENERATION_SETTINGS['controlled']['num_specific_reports'] * 2
+        NUM_THEMATIC_REPORTS = GENERATION_SETTINGS['controlled']['num_thematic_reports'] * 2
+    elif event_type == 'volatility':
+        # Volatility events generate mixed content
+        NUM_SPECIFIC_NEWS = GENERATION_SETTINGS['controlled']['num_specific_news']
+        NUM_GENERAL_NEWS = GENERATION_SETTINGS['controlled']['num_general_news'] * 3  # More general articles about volatility
+        NUM_SPECIFIC_REPORTS = GENERATION_SETTINGS['controlled']['num_specific_reports']
+        NUM_THEMATIC_REPORTS = GENERATION_SETTINGS['controlled']['num_thematic_reports']
+    else:
+        # Default bad_news amounts
+        NUM_SPECIFIC_NEWS = GENERATION_SETTINGS['controlled']['num_specific_news']
+        NUM_GENERAL_NEWS = GENERATION_SETTINGS['controlled']['num_general_news']
+        NUM_SPECIFIC_REPORTS = GENERATION_SETTINGS['controlled']['num_specific_reports']
+        NUM_THEMATIC_REPORTS = GENERATION_SETTINGS['controlled']['num_thematic_reports']
+    
+    # Configuration flags for controlled generation
     DO_GENERATE_NEWS = True
     DO_GENERATE_REPORTS = True
     DO_INGEST_NEWS = True
@@ -341,16 +386,17 @@ if __name__ == "__main__":
         print("ERROR: Configuration validation failed:")
         for error in errors:
             print(f"  - {error}")
-        sys.exit(1)
+        return
 
     # 2. Initialize Gemini model
     if DO_GENERATE_NEWS or DO_GENERATE_REPORTS:
         try:
+            global gemini_model
             gemini_model = configure_gemini()
             print("Gemini model initialized successfully.")
         except Exception as e:
             print(f"ERROR: Could not initialize Gemini model: {e}")
-            sys.exit(1)
+            return
 
     # 3. Generate Controlled News Articles (if enabled)
     if DO_GENERATE_NEWS:
@@ -358,14 +404,14 @@ if __name__ == "__main__":
         clear_file_if_exists(GENERATED_NEWS_FILE)
         
         total_news = generate_controlled_news_articles(
-            num_specific=NUM_SPECIFIC_NEWS_TO_GENERATE,
-            num_general=NUM_GENERAL_NEWS_TO_GENERATE,
+            num_specific=NUM_SPECIFIC_NEWS,
+            num_general=NUM_GENERAL_NEWS,
             output_filepath=GENERATED_NEWS_FILE
         )
         print(f"Total controlled news articles saved to file: {total_news}")
-        print(f"✓ Bad news targeted at: {BAD_EVENT_TARGET_NEWS_SYMBOL} ({BAD_EVENT_NEWS_THEME})")
+        print(f"✓ {event_type.replace('_', ' ').title()} news targeted at: {BAD_EVENT_TARGET_NEWS_SYMBOL} ({BAD_EVENT_NEWS_THEME})")
     else:
-        print("Skipping controlled news generation as DO_GENERATE_NEWS is False.")
+        print("Skipping controlled news generation.")
 
     # 4. Generate Controlled Reports (if enabled)
     if DO_GENERATE_REPORTS:
@@ -373,14 +419,14 @@ if __name__ == "__main__":
         clear_file_if_exists(GENERATED_REPORTS_FILE)
         
         total_reports = generate_controlled_reports(
-            num_specific=NUM_SPECIFIC_REPORTS_TO_GENERATE,
-            num_thematic=NUM_THEMATIC_REPORTS_TO_GENERATE,
+            num_specific=NUM_SPECIFIC_REPORTS,
+            num_thematic=NUM_THEMATIC_REPORTS,
             output_filepath=GENERATED_REPORTS_FILE
         )
         print(f"Total controlled reports saved to file: {total_reports}")
-        print(f"✓ Bad report targeted at: {BAD_EVENT_TARGET_REPORT_SYMBOL} ({BAD_EVENT_REPORT_FOCUS})")
+        print(f"✓ {event_type.replace('_', ' ').title()} report targeted at: {BAD_EVENT_TARGET_REPORT_SYMBOL} ({BAD_EVENT_REPORT_FOCUS})")
     else:
-        print("Skipping controlled report generation as DO_GENERATE_REPORTS is False.")
+        print("Skipping controlled report generation.")
 
     log_with_timestamp("Controlled data generation phase complete.")
 
@@ -392,23 +438,38 @@ if __name__ == "__main__":
             es_client = create_elasticsearch_client()
         except Exception as e:
             print(f"ERROR: Could not connect to Elasticsearch: {e}")
-            raise
+            return
 
     # 6. Ingest Data into Elasticsearch (if enabled)
     if DO_INGEST_NEWS:
         log_with_timestamp("--- Ingesting Controlled News Articles ---")
         ingest_data_to_es(es_client, GENERATED_NEWS_FILE, NEWS_INDEX, "article_id")
     else:
-        print("Skipping controlled news ingestion as DO_INGEST_NEWS is False.")
+        print("Skipping controlled news ingestion.")
 
     if DO_INGEST_REPORTS:
         log_with_timestamp("--- Ingesting Controlled Reports ---")
         ingest_data_to_es(es_client, GENERATED_REPORTS_FILE, REPORTS_INDEX, "report_id")
     else:
-        print("Skipping controlled reports ingestion as DO_INGEST_REPORTS is False.")
+        print("Skipping controlled reports ingestion.")
 
-    log_with_timestamp("All controlled bad news event generation and ingestion processes completed.")
-    print(f"\\n🎯 Demo Event Summary:")
-    print(f"   📰 Bad News: {BAD_EVENT_TARGET_NEWS_SYMBOL} - {BAD_EVENT_NEWS_THEME}")
-    print(f"   📊 Bad Report: {BAD_EVENT_TARGET_REPORT_SYMBOL} - {BAD_EVENT_REPORT_FOCUS}")
+    log_with_timestamp(f"All controlled {event_type.replace('_', ' ')} event generation and ingestion processes completed.")
+    print(f"\\n🎯 {event_type.replace('_', ' ').title()} Event Summary:")
+    print(f"   📰 News: {BAD_EVENT_TARGET_NEWS_SYMBOL} - {BAD_EVENT_NEWS_THEME}")
+    print(f"   📊 Report: {BAD_EVENT_TARGET_REPORT_SYMBOL} - {BAD_EVENT_REPORT_FOCUS}")
     print(f"   💾 Files: {GENERATED_NEWS_FILE}, {GENERATED_REPORTS_FILE}")
+
+
+if __name__ == "__main__":
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Trigger controlled market events for demo purposes")
+    parser.add_argument('--event-type', 
+                       choices=['bad_news', 'market_crash', 'volatility'],
+                       default='bad_news',
+                       help='Type of event to trigger (default: bad_news)')
+    
+    args = parser.parse_args()
+    
+    # Run event generation with specified type
+    run_event_generation(args.event_type)

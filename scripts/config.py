@@ -163,13 +163,40 @@ CONTENT_SETTINGS = {
 }
 
 # --- Bad Event Configuration (for trigger script) ---
-BAD_EVENT_CONFIG = {
-    'target_news_symbol': 'TSLA',
-    'news_theme': "major recall impacting new vehicle launches and brand reputation",
-    'target_report_symbol': 'FCX',
-    'report_focus': "unexpected production shortfall due to severe weather disrupting mining operations", 
-    'sentiment': "negative"
+# --- Event Configurations ---
+EVENT_CONFIGS = {
+    'bad_news': {
+        'target_news_symbol': 'TSLA',
+        'news_theme': "major recall impacting new vehicle launches and brand reputation",
+        'target_report_symbol': 'FCX',
+        'report_focus': "unexpected production shortfall due to severe weather disrupting mining operations", 
+        'sentiment': "negative",
+        'description': "Targeted negative news for specific companies"
+    },
+    'market_crash': {
+        'target_news_symbol': 'SPY',
+        'news_theme': "widespread market selloff triggered by economic uncertainty and inflation concerns",
+        'target_report_symbol': 'QQQ',
+        'report_focus': "significant technology sector decline amid rising interest rates and regulatory pressure",
+        'sentiment': "very negative",
+        'description': "Broad market crash scenario affecting multiple sectors",
+        'additional_symbols': ['VTI', 'IWM', 'XLF', 'XLE'],  # Additional ETFs affected
+        'market_wide_impact': True
+    },
+    'volatility': {
+        'target_news_symbol': 'VIX',
+        'news_theme': "extreme market volatility driven by geopolitical tensions and uncertain economic data",
+        'target_report_symbol': 'UVXY',
+        'report_focus': "heightened volatility expectations creating trading opportunities and risk management challenges",
+        'sentiment': "neutral_volatile",
+        'description': "High volatility market conditions with mixed sentiment",
+        'volatility_symbols': ['SVXY', 'VIXY', 'TVIX'],  # Volatility-related instruments
+        'mixed_sentiment': True
+    }
 }
+
+# Legacy configuration for backward compatibility
+BAD_EVENT_CONFIG = EVENT_CONFIGS['bad_news']
 
 # --- Common Field Names ---
 FIELD_NAMES = {

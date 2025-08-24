@@ -237,6 +237,37 @@ python3 control.py --trigger-event bad_news
 python3 control.py --status
 ```
 
+### Jupyter Notebook Usage
+
+For programmatic usage in Jupyter notebooks without interactive prompts:
+
+**Data Loading Only (No AI Key Required):**
+```python
+# Set Elasticsearch credentials
+import os
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
+os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
+
+# Setup indices and load existing data
+!python3 control.py --status
+!python3 control.py --custom --elasticsearch
+```
+
+**Full Data Generation (Requires AI Key):**
+```python
+# Set all credentials
+import os
+os.environ['GEMINI_API_KEY'] = 'your_gemini_api_key_here'
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
+os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
+
+# Generate new data
+!python3 control.py --quick-start
+
+# Or trigger specific events
+!python3 control.py --trigger-event market_crash
+```
+
 ### Direct Script Execution
 
 Run individual generation scripts:
@@ -247,8 +278,10 @@ python3 scripts/generate_holdings_accounts.py
 # Generate news and reports
 python3 scripts/generate_reports_and_news_new.py
 
-# Trigger controlled events
-python3 scripts/trigger_bad_news_event.py
+# Trigger controlled events with different types
+python3 scripts/trigger_bad_news_event.py --event-type bad_news
+python3 scripts/trigger_bad_news_event.py --event-type market_crash
+python3 scripts/trigger_bad_news_event.py --event-type volatility
 ```
 
 ### Elasticsearch Index Management
