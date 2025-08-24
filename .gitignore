@@ -205,3 +205,149 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# ===============================================
+# PROJECT-SPECIFIC IGNORES
+# ===============================================
+
+# Environment variables and secrets
+*.env
+.env.*
+.envrc
+
+# API Keys and sensitive data (backup protection)
+*api_key*
+*secret*
+*password*
+*credentials*
+
+# Generated data files (large datasets - keep smaller examples)
+generated_data/*accounts*.jsonl
+generated_data/*holdings*.jsonl
+generated_data/*news*.jsonl
+generated_data/*reports*.jsonl
+
+# Keep small sample files for documentation
+!generated_data/*sample*
+!generated_data/*example*
+!generated_data/*test*
+
+# Configuration and user presets
+config_presets.json
+*.local.py
+*_local.py
+user_config.json
+
+# Temporary and backup files
+*.tmp
+*.temp
+*.bak
+*.backup
+*~
+.#*
+#*#
+
+# Log files
+*.log
+*.log.*
+logs/
+log/
+
+# Local development files
+dev/
+development/
+sandbox/
+scratch/
+experiments/
+test_output/
+test_results/
+
+# IDE and editor files
+.vscode/settings.json
+.vscode/launch.json
+.idea/workspace.xml
+.idea/tasks.xml
+*.swp
+*.swo
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.AppleDouble
+.LSOverride
+Icon?
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+
+# Elasticsearch data (if running locally)
+elasticsearch_data/
+es_data/
+data/elasticsearch/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Output and build directories
+output/
+out/
+build/
+dist/
+target/
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.7z
+*.rar
+
+# Cache directories
+cache/
+.cache/
+tmp/
+temp/
+
+# Node.js (if any frontend components added later)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Documentation build artifacts
+docs/_build/
+site/
+_site/
+
+# Test artifacts
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# Virtual environments (comprehensive)
+venv*/
+env*/
+.venv*/
+.env*/
+ENV*/
+env.bak/
+venv.bak/
+
+# Package manager artifacts
+pip-log.txt
+pip-delete-this-directory.txt
+Pipfile.lock
+
+# System files
+*.pid
+*.sock
+.DS_Store
+Thumbs.db

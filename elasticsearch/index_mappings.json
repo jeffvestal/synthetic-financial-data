@@ -1,0 +1,290 @@
+{
+  "financial_asset_details": {
+    "settings": {
+      "index.mode": "lookup"
+    },
+    "mappings": {
+      "properties": {
+        "symbol": {
+          "type": "keyword"
+        },
+        "asset_name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "semantic_text": {
+              "type": "semantic_text",
+              "inference_id": ".elser-2-elasticsearch"
+            }
+          }
+        },
+        "instrument_type": {
+          "type": "keyword"
+        },
+        "sector": {
+          "type": "keyword"
+        },
+        "index_membership": {
+          "type": "keyword"
+        },
+        "country_of_origin": {
+          "type": "keyword"
+        },
+        "current_price": {
+          "type": "object",
+          "properties": {
+            "price": {
+              "type": "float"
+            },
+            "last_updated": {
+              "type": "date"
+            }
+          }
+        },
+        "previous_closing_price": {
+          "type": "object",
+          "properties": {
+            "price": {
+              "type": "float"
+            },
+            "prev_close_date": {
+              "type": "date"
+            }
+          }
+        },
+        "bond_details": {
+          "type": "object",
+          "properties": {
+            "issuer": {
+              "type": "keyword"
+            },
+            "maturity_date": {
+              "type": "date"
+            },
+            "coupon_rate": {
+              "type": "float"
+            }
+          }
+        },
+        "last_updated": {
+          "type": "date"
+        }
+      }
+    }
+  },
+  "financial_accounts": {
+    "settings": {
+      "index.mode": "lookup"
+    },
+    "mappings": {
+      "properties": {
+        "account_id": {
+          "type": "keyword"
+        },
+        "account_holder_name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "first_name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "last_name": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            }
+          }
+        },
+        "state": {
+          "type": "keyword"
+        },
+        "zip_code": {
+          "type": "keyword"
+        },
+        "account_type": {
+          "type": "keyword"
+        },
+        "risk_profile": {
+          "type": "keyword"
+        },
+        "contact_preference": {
+          "type": "keyword"
+        },
+        "total_portfolio_value": {
+          "type": "float"
+        },
+        "last_updated": {
+          "type": "date"
+        }
+      }
+    }
+  },
+  "financial_holdings": {
+    "settings": {
+      "index.mode": "lookup"
+    },
+    "mappings": {
+      "properties": {
+        "holding_id": {
+          "type": "keyword"
+        },
+        "account_id": {
+          "type": "keyword"
+        },
+        "symbol": {
+          "type": "keyword"
+        },
+        "quantity": {
+          "type": "float"
+        },
+        "purchase_price": {
+          "type": "float"
+        },
+        "purchase_date": {
+          "type": "date"
+        },
+        "is_high_value": {
+          "type": "boolean"
+        },
+        "last_updated": {
+          "type": "date"
+        }
+      }
+    }
+  },
+  "financial_news": {
+    "settings": {
+      "index.mode": "lookup"
+    },
+    "mappings": {
+      "properties": {
+        "article_id": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "semantic_text": {
+              "type": "semantic_text",
+              "inference_id": ".elser-2-elasticsearch"
+            }
+          }
+        },
+        "content": {
+          "type": "text",
+          "fields": {
+            "semantic_text": {
+              "type": "semantic_text",
+              "inference_id": ".elser-2-elasticsearch"
+            }
+          }
+        },
+        "source": {
+          "type": "keyword"
+        },
+        "published_date": {
+          "type": "date"
+        },
+        "url": {
+          "type": "keyword"
+        },
+        "entities": {
+          "type": "keyword"
+        },
+        "sentiment": {
+          "type": "keyword"
+        },
+        "last_updated": {
+          "type": "date"
+        },
+        "company_symbol": {
+          "type": "keyword"
+        },
+        "primary_symbol": {
+          "type": "keyword"
+        }
+      }
+    }
+  },
+  "financial_reports": {
+    "settings": {
+      "index.mode": "lookup"
+    },
+    "mappings": {
+      "properties": {
+        "report_id": {
+          "type": "keyword"
+        },
+        "sentiment": {
+          "type": "keyword"
+        },
+        "title": {
+          "type": "text",
+          "fields": {
+            "keyword": {
+              "type": "keyword",
+              "ignore_above": 256
+            },
+            "semantic_text": {
+              "type": "semantic_text",
+              "inference_id": ".elser-2-elasticsearch"
+            }
+          }
+        },
+        "content": {
+          "type": "text",
+          "fields": {
+            "semantic_text": {
+              "type": "semantic_text",
+              "inference_id": ".elser-2-elasticsearch"
+            }
+          }
+        },
+        "company_symbol": {
+          "type": "keyword"
+        },
+        "report_type": {
+          "type": "keyword"
+        },
+        "report_date": {
+          "type": "date"
+        },
+        "entities": {
+          "type": "keyword"
+        },
+        "author": {
+          "type": "keyword"
+        },
+        "url": {
+          "type": "keyword"
+        },
+        "last_updated": {
+          "type": "date"
+        },
+        "primary_symbol": {
+          "type": "keyword"
+        }
+      }
+    }
+  }
+}

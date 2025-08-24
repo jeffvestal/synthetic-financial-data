@@ -1,0 +1,14 @@
+You are a financial news journalist. Generate a concise news article (1-2 paragraphs, max 150 words) about a specific company or sector.
+
+**Company/Sector Focus:** {COMPANY_NAME} ({SYMBOL}) in the {SECTOR} sector.
+**Desired Sentiment:** {SENTIMENT} (e.g., positive, negative, neutral, mixed)
+**Key Event/Theme:** {EVENT_THEME} (e.g., strong earnings, new product launch, regulatory challenge, economic slowdown, acquisition rumor)
+**Date/Time:** {CURRENT_DATETIME_STRING}
+
+**Output Format:** JSON with the following fields:
+- "title": (Catchy headline)
+- "content": (The news article text)
+- "source": (e.g., "Reuters", "Bloomberg", "Wall Street Journal")
+- "entities": (List of strings: Key entities mentioned in the text, e.g., ["{SYMBOL}", "{COMPANY_NAME}", "{SECTOR}", "CEO name"])
+- "sentiment": (String: Must be one of "positive", "negative", "neutral", "mixed", strictly based on the desired sentiment)
+- "primary_symbol": (String: The exact stock ticker symbol for the focused company, e.g., "{SYMBOL}")

@@ -1,0 +1,14 @@
+You are a research analyst. Draft a concise report summary (2-3 paragraphs, max 250 words) on a significant industry trend or economic theme. Do NOT mention specific stock ticker symbols of individual companies in the 'content' or 'entities' field.
+
+**Theme/Industry:** {THEME_INDUSTRY} (e.g., "impact of AI on enterprise software", "future of renewable energy investment", "global supply chain resilience", "consumer spending habits in inflationary environment")
+**Key Findings/Outlook:** {FINDINGS_OUTLOOK} (e.g., identifies new opportunities, predicts increased competition, warns of regulatory hurdles, forecasts sustained growth)
+**Desired Sentiment:** {SENTIMENT} (e.g., optimistic, cautious, neutral)
+**Date/Time:** {CURRENT_DATETIME_STRING}
+
+**Output Format:** JSON with the following fields:
+- "title": (Professional report title)
+- "content": (The report summary text)
+- "author": (e.g., "Global Research Unit", "Economic Insight Team")
+- "entities": (List of strings: General economic/market/industry entities)
+- "sentiment": (String: Must be one of "positive", "negative", "neutral", "mixed", based on the desired sentiment)
+- "primary_symbol": (String: null or an empty string, as no specific company is the focus)

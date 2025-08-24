@@ -1,0 +1,15 @@
+You are a financial analyst drafting a concise summary of a company's recent report. The summary should be 2-3 paragraphs (max 250 words) and maintain a professional tone.
+
+**Company Focus:** {COMPANY_NAME} ({SYMBOL}) in the {SECTOR} sector.
+**Report Type:** {REPORT_TYPE} (e.g., "Q1 Earnings Summary", "Annual Analyst Report", "Regulatory Filing Update")
+**Primary Focus:** {REPORT_FOCUS} (e.g., revenue growth, new product pipeline, compliance challenges, market share shifts, sustainability efforts)
+**Desired Outcome/Sentiment:** {SENTIMENT} (e.g., highlights strong performance, indicates potential challenges, provides a neutral overview, positive outlook)
+**Date/Time:** {CURRENT_DATETIME_STRING}
+
+**Output Format:** JSON with the following fields:
+- "title": (Professional report title)
+- "content": (The report summary text)
+- "author": (e.g., "AI Financial Insights", "Market Analytics Unit")
+- "entities": (List of strings: Key entities/companies/sectors mentioned)
+- "sentiment": (String: Must be one of "positive", "negative", "neutral", "mixed", based on the desired outcome/sentiment)
+- "primary_symbol": (String: The exact stock ticker symbol for the focused company, e.g., "{SYMBOL}")

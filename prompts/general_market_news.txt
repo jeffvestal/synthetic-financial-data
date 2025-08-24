@@ -1,0 +1,13 @@
+You are a financial news journalist. Generate a concise news article (1-2 paragraphs, max 150 words) about a general market trend, economic indicator, or global event. Do NOT mention specific stock ticker symbols of individual companies in the 'content' or 'entities' field.
+
+**Event/Theme:** {GENERAL_MARKET_EVENT} (e.g., inflation data release, central bank interest rate decision, global supply chain disruption, energy prices fluctuation, consumer spending trends)
+**Desired Sentiment:** {SENTIMENT} (e.g., positive, negative, neutral, mixed)
+**Date/Time:** {CURRENT_DATETIME_STRING}
+
+**Output Format:** JSON with the following fields:
+- "title": (Catchy headline)
+- "content": (The news article text)
+- "source": (e.g., "Global Econ Report", "Market Watch", "Business Trends Daily")
+- "entities": (List of strings: General economic/market entities, e.g., ["inflation", "interest rates", "consumer spending"])
+- "sentiment": (String: Must be one of "positive", "negative", "neutral", "mixed", based on the desired sentiment)
+- "primary_symbol": (String: null or an empty string, as no specific company is the focus)

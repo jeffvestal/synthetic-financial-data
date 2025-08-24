@@ -1,0 +1,15 @@
+# Core dependencies for synthetic financial data generation
+google-generativeai>=0.3.0
+elasticsearch>=8.0.0
+faker>=15.0.0
+tqdm>=4.64.0
+python-dotenv>=0.19.0
+
+# Interactive control script dependencies
+rich>=13.0.0
+colorama>=0.4.4
+
+# Optional dependencies for enhanced functionality
+# pandas>=1.5.0  # For data analysis
+# matplotlib>=3.5.0  # For visualization
+# seaborn>=0.11.0  # For advanced visualization
