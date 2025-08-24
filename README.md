@@ -605,7 +605,21 @@ python3 control.py
 # Elasticsearch: No
 ```
 
-### Example 2: Full Production Dataset
+### Example 2: Load Existing Data with Current Timestamps
+Load pre-generated data to Elasticsearch with fresh timestamps (most common use case):
+```bash
+# Load all existing data files with timestamps updated to now
+python3 control.py --custom --accounts --news --reports --elasticsearch --update-timestamps-on-load
+```
+This will:
+- Load all existing JSONL files to Elasticsearch (accounts, holdings, news, reports)
+- Update all timestamps (published_date, last_updated, etc.) to current time
+- Make data appear freshly generated for demos
+- No Gemini API key required
+
+**Note**: The `--custom` flag requires specifying data types (`--accounts`, `--news`, `--reports`). Without these flags, you'll see "No tasks to execute".
+
+### Example 3: Full Production Dataset
 Generate complete dataset with Elasticsearch:
 ```bash
 python3 control.py --quick-start
@@ -617,7 +631,7 @@ This creates:
 - 100+ reports
 - All ingested to Elasticsearch
 
-### Example 3: Trigger Market Event
+### Example 4: Trigger Market Event
 Create a controlled bad news event:
 ```bash
 python3 control.py --trigger-event bad_news
@@ -627,7 +641,7 @@ Generates:
 - 2 negative reports for FCX
 - General market volatility articles
 
-### Example 4: Demo Data Freshness
+### Example 5: Demo Data Freshness
 Update existing data to appear current for a live demo:
 ```bash
 # Load existing data with current timestamps
@@ -641,7 +655,7 @@ python3 control.py --update-timestamps --timestamp-offset -24  # News 24h ago
 # Then manually update reports to current time via interactive menu
 ```
 
-### Example 5: Custom Symbol Focus
+### Example 6: Custom Symbol Focus
 Modify `scripts/symbols_config.py` to focus on specific stocks:
 ```python
 STOCK_SYMBOLS_AND_INFO = {
