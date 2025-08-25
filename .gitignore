@@ -223,11 +223,9 @@ __marimo__/
 *password*
 *credentials*
 
-# Generated data files (large datasets - keep smaller examples)
-generated_data/*accounts*.jsonl
-generated_data/*holdings*.jsonl
-generated_data/*news*.jsonl
-generated_data/*reports*.jsonl
+# Generated data files - Allow essential files for user functionality
+# (Files are ~31MB total, well within GitHub's 100MB limit)
+# Users need these files to actually use the system
 
 # Keep small sample files for documentation
 !generated_data/*sample*
