@@ -294,9 +294,17 @@ python3 control.py --update-files --timestamp-offset -12
 python3 control.py --custom --elasticsearch --update-timestamps-on-load
 ```
 
-### Jupyter Notebook Usage
+### Jupyter Notebook & Google Colab Usage
 
-For programmatic usage in Jupyter notebooks without interactive prompts:
+The system automatically detects notebook environments and runs in non-interactive mode to prevent blocking on prompts. For explicit control, use the `--non-interactive` flag:
+
+**Key Compatibility Features:**
+- 🔍 **Automatic Detection**: Detects Colab/Jupyter environments automatically
+- 🚫 **No Blocking Prompts**: Skips all interactive prompts that would hang notebook cells
+- 📝 **Complete Error Messages**: Shows full error details (no truncation)
+- ⚙️ **Explicit Control**: Use `--non-interactive` flag for guaranteed non-interactive mode
+
+For programmatic usage in Jupyter notebooks or Google Colab:
 
 **Data Loading Only (No AI Key Required):**
 ```python
@@ -305,17 +313,20 @@ import os
 os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
 os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 
+# Check system status (automatically non-interactive in notebooks)
+!python3 control.py --status
+
 # Check if indices are setup
-!python3 control.py --check-indices
+!python3 control.py --check-indices --non-interactive
 
 # Load existing data to Elasticsearch
-!python3 control.py --custom --elasticsearch
+!python3 control.py --custom --elasticsearch --non-interactive
 
 # Load data with updated timestamps (appears current)
-!python3 control.py --custom --elasticsearch --update-timestamps-on-load
+!python3 control.py --custom --elasticsearch --update-timestamps-on-load --non-interactive
 
 # Update existing ES data timestamps to now
-!python3 control.py --update-timestamps
+!python3 control.py --update-timestamps --non-interactive
 ```
 
 **Full Data Generation (Requires AI Key):**
@@ -326,12 +337,39 @@ os.environ['GEMINI_API_KEY'] = 'your_gemini_api_key_here'
 os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
 os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 
-# Generate new data
+# Generate new data (automatically non-interactive in notebooks)
 !python3 control.py --quick-start
+
+# Force non-interactive mode explicitly
+!python3 control.py --quick-start --non-interactive
 
 # Or trigger specific events
 !python3 control.py --trigger-event market_crash
 ```
+
+**Quick Reference - Common Colab/Jupyter Commands:**
+
+```python
+# Load all existing data types with current timestamps (most common)
+!python3 control.py --custom --accounts --news --reports --elasticsearch --update-timestamps-on-load
+
+# Load only specific data types with fresh timestamps  
+!python3 control.py --custom --news --reports --elasticsearch --update-timestamps-on-load
+
+# Generate everything fresh (requires GEMINI_API_KEY)
+!python3 control.py --quick-start
+
+# Generate specific types with custom volumes (requires GEMINI_API_KEY)
+!python3 control.py --custom --accounts --news --reports --elasticsearch --num-accounts 100
+
+# Check system status (no API keys needed)
+!python3 control.py --status
+
+# Update existing Elasticsearch data timestamps to now
+!python3 control.py --update-timestamps
+```
+
+> **💡 Key Tip**: `--custom` requires explicit data type flags (`--accounts`, `--news`, `--reports`), while `--quick-start` includes everything by default.
 
 ### Direct Script Execution
 
@@ -698,6 +736,29 @@ ModuleNotFoundError: No module named 'rich'
 ```bash
 pip install -r requirements.txt
 ```
+
+### Google Colab / Jupyter Notebook Issues
+
+#### 5. Cell Hangs on "Press Enter to continue..."
+**Problem**: Command gets stuck waiting for user input in notebook environments.
+**Solution**: The system now automatically detects notebook environments and skips prompts. For older versions or explicit control:
+```python
+# Use the --non-interactive flag
+!python3 control.py --status --non-interactive
+```
+
+#### 6. ModuleNotFoundError: No module named 'menu_system'
+**Problem**: Missing lib/ directory in GitHub repository.
+**Solution**: Ensure you're using the latest version where this issue is fixed. If still experiencing issues:
+```python
+# Check if lib directory exists
+!ls -la lib/
+# If missing, ensure you've cloned the complete repository
+```
+
+#### 7. Truncated Error Messages
+**Problem**: Seeing "Error: ..." instead of complete error details.
+**Solution**: This has been fixed in recent versions. Update to latest version for complete error messages.
 
 ### Debug Mode
 Enable verbose logging by modifying `scripts/config.py`:

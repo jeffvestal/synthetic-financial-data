@@ -40,6 +40,7 @@ class TaskExecutor:
         )
         self.executor = ThreadPoolExecutor(max_workers=4)
         self.stop_requested = False
+        self.interactive_mode = True  # Default to interactive
         
         # Script mappings
         self.script_map = {
@@ -49,11 +50,12 @@ class TaskExecutor:
             'trigger_event': 'scripts/trigger_bad_news_event.py'
         }
     
-    def execute_tasks(self, config: Dict[str, Any]):
+    def execute_tasks(self, config: Dict[str, Any], interactive: bool = True):
         """Execute configured tasks with live dashboard."""
         self.stop_requested = False
         self.active_tasks.clear()
         self.completed_tasks.clear()
+        self.interactive_mode = interactive
         
         # Plan tasks based on configuration
         tasks = self._plan_tasks(config)
@@ -213,9 +215,10 @@ class TaskExecutor:
                 
                 return {'success': True, 'stdout': stdout}
             else:
-                # Error
-                self.active_tasks[task_name]['status'] = 'error'
-                self.active_tasks[task_name]['message'] = f'Error: {stderr[:100]}...'
+                # Error - show full error message
+                self.active_tasks[task_name]['status'] = 'error' 
+                error_msg = stderr.strip() if stderr.strip() else "Process failed with no error details"
+                self.active_tasks[task_name]['message'] = f'Error: {error_msg}'
                 
                 return {'success': False, 'error': stderr, 'stdout': stdout}
                 
@@ -475,10 +478,25 @@ class TaskExecutor:
         if error_tasks:
             self.console.print("\n[red]❌ Error Details:[/red]")
             for task_info in error_tasks:
-                self.console.print(f"  • {task_info['task']['name']}: {task_info['message']}")
+                task_name = task_info['task']['name']
+                error_msg = task_info['message']
+                
+                # Try to get the full error from the task result if available
+                future_result = getattr(task_info, 'result', None)
+                if future_result and hasattr(future_result, 'result'):
+                    try:
+                        result = future_result.result()
+                        if not result.get('success') and result.get('error'):
+                            full_error = result['error'].strip()
+                            if full_error:
+                                error_msg = f"Error: {full_error}"
+                    except:
+                        pass
+                
+                self.console.print(f"  • {task_name}: {error_msg}")
         
         self.console.print(f"\n[{status_color}]{status_text}[/{status_color}]")
         
-        # Pause for user to see results
-        if not self.stop_requested:
+        # Pause for user to see results (only in interactive mode)
+        if not self.stop_requested and self.interactive_mode:
             self.console.input("\n[dim]Press Enter to continue...[/dim]")

@@ -40,6 +40,35 @@ def setup_module_paths():
     
     return False
 
+def detect_interactive_environment():
+    """Detect if running in an interactive environment that supports prompts."""
+    try:
+        # Check for Google Colab
+        import google.colab
+        return False  # Colab cells don't support interactive input
+    except ImportError:
+        pass
+    
+    try:
+        # Check for Jupyter notebook/lab
+        from IPython import get_ipython
+        ipython = get_ipython()
+        if ipython is not None:
+            # Check if it's a notebook environment (not terminal IPython)
+            if hasattr(ipython, 'kernel'):
+                return False  # Jupyter notebook/lab
+            # Terminal IPython is interactive
+            return True
+    except ImportError:
+        pass
+    
+    # Check if stdout is connected to a terminal
+    if not sys.stdout.isatty():
+        return False
+    
+    # Default to interactive if we can't detect otherwise
+    return True
+
 # Setup paths before any local imports
 if not setup_module_paths():
     print("❌ Could not locate project modules. Ensure you're running from the project directory.")
@@ -69,12 +98,18 @@ from task_executor import TaskExecutor
 class SyntheticDataController:
     """Main controller for the interactive data generation interface."""
     
-    def __init__(self):
+    def __init__(self, interactive_mode: Optional[bool] = None):
         self.console = Console()
         self.config_manager = ConfigManager()
         self.menu_system = MenuSystem(self.console)
         self.task_executor = TaskExecutor(self.console)
         
+        # Determine interactive mode
+        if interactive_mode is None:
+            self.interactive_mode = detect_interactive_environment()
+        else:
+            self.interactive_mode = interactive_mode
+            
         # Setup signal handler for graceful exit
         signal.signal(signal.SIGINT, self._signal_handler)
         
@@ -145,7 +180,7 @@ class SyntheticDataController:
     
     def _quick_start(self, interactive=True):
         """Execute quick start with default settings."""
-        if interactive:
+        if interactive and self.interactive_mode:
             self.console.print(Panel.fit(
                 "[bold blue]Quick Start[/bold blue]\n\n"
                 "This will generate a complete dataset with default settings:\n"
@@ -158,6 +193,8 @@ class SyntheticDataController:
             
             if not Confirm.ask("Proceed with quick start?", default=False):
                 return
+        elif not self.interactive_mode:
+            self.console.print("🚀 [blue]Starting Quick Start with default settings...[/blue]")
         
         # Set up quick start configuration
         config = {
@@ -172,6 +209,10 @@ class SyntheticDataController:
     
     def _custom_generation(self):
         """Run custom generation with user-specified options."""
+        if not self.interactive_mode:
+            self.console.print("❌ [red]Custom generation requires interactive mode or command-line arguments[/red]")
+            return
+            
         self.console.print(Panel.fit(
             "[bold green]Custom Generation[/bold green]\n\n"
             "Configure your data generation settings",
@@ -200,7 +241,7 @@ class SyntheticDataController:
     
     def _check_status(self):
         """Display current system status and configuration."""
-        self.menu_system.show_status(self.config_manager, interactive=False)
+        self.menu_system.show_status(self.config_manager, interactive=self.interactive_mode)
     
     def _check_indices(self):
         """Check and display Elasticsearch index status only."""
@@ -310,7 +351,7 @@ class SyntheticDataController:
         self._operations_running = True
         
         try:
-            self.task_executor.execute_tasks(config)
+            self.task_executor.execute_tasks(config, interactive=self.interactive_mode)
         finally:
             self._operations_running = False
     
@@ -380,6 +421,8 @@ Examples:
                        help="Hours offset from now (negative for past, positive for future)")
     parser.add_argument("--update-files", action="store_true",
                        help="Update timestamps in data files before loading")
+    parser.add_argument("--non-interactive", action="store_true",
+                       help="Force non-interactive mode (no prompts)")
     
     return parser
 
@@ -388,8 +431,13 @@ def main():
     parser = setup_argparse()
     args = parser.parse_args()
     
+    # Determine interactive mode
+    interactive_mode = None
+    if args.non_interactive:
+        interactive_mode = False
+    
     # Initialize controller
-    controller = SyntheticDataController()
+    controller = SyntheticDataController(interactive_mode=interactive_mode)
     
     # Determine if running in interactive mode
     if len(sys.argv) == 1:
