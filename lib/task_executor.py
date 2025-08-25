@@ -102,32 +102,87 @@ class TaskExecutor:
         """Plan tasks based on configuration."""
         tasks = []
         
+        # Check if this is a data loading operation (no generation settings)
+        is_loading_existing_data = not any([
+            config.get('num_accounts'),
+            config.get('num_news'), 
+            config.get('num_reports'),
+            config.get('trigger_event')
+        ])
+        
         if config.get('generate_accounts'):
-            tasks.append({
-                'name': 'accounts',
-                'description': 'Generate Accounts & Holdings',
-                'script': self.script_map['accounts'],
-                'estimated_duration': 120,  # seconds
-                'config': config
-            })
+            # Check if data files exist when loading existing data
+            missing_files = []
+            if is_loading_existing_data:
+                missing_files = self._check_missing_data_files(['accounts', 'holdings', 'asset_details'])
+                
+            if missing_files:
+                # Add a validation task that will explain the issue
+                tasks.append({
+                    'name': 'accounts',
+                    'description': 'Check Accounts Data Files',
+                    'script': None,  # Special marker for validation task
+                    'estimated_duration': 1,
+                    'config': config,
+                    'missing_files': missing_files,
+                    'task_type': 'validation'
+                })
+            else:
+                tasks.append({
+                    'name': 'accounts',
+                    'description': 'Generate Accounts & Holdings',
+                    'script': self.script_map['accounts'],
+                    'estimated_duration': 120,  # seconds
+                    'config': config
+                })
         
         if config.get('generate_news'):
-            tasks.append({
-                'name': 'news', 
-                'description': 'Generate News Articles',
-                'script': self.script_map['news'],
-                'estimated_duration': 300,
-                'config': config
-            })
+            missing_files = []
+            if is_loading_existing_data:
+                missing_files = self._check_missing_data_files(['news'])
+                
+            if missing_files:
+                tasks.append({
+                    'name': 'news',
+                    'description': 'Check News Data Files',
+                    'script': None,
+                    'estimated_duration': 1,
+                    'config': config,
+                    'missing_files': missing_files,
+                    'task_type': 'validation'
+                })
+            else:
+                tasks.append({
+                    'name': 'news', 
+                    'description': 'Generate News Articles',
+                    'script': self.script_map['news'],
+                    'estimated_duration': 300,
+                    'config': config
+                })
         
         if config.get('generate_reports'):
-            tasks.append({
-                'name': 'reports',
-                'description': 'Generate Reports',
-                'script': self.script_map['reports'], 
-                'estimated_duration': 180,
-                'config': config
-            })
+            missing_files = []
+            if is_loading_existing_data:
+                missing_files = self._check_missing_data_files(['reports'])
+                
+            if missing_files:
+                tasks.append({
+                    'name': 'reports',
+                    'description': 'Check Reports Data Files',
+                    'script': None,
+                    'estimated_duration': 1,
+                    'config': config,
+                    'missing_files': missing_files,
+                    'task_type': 'validation'
+                })
+            else:
+                tasks.append({
+                    'name': 'reports',
+                    'description': 'Generate Reports',
+                    'script': self.script_map['reports'], 
+                    'estimated_duration': 180,
+                    'config': config
+                })
         
         if config.get('trigger_event'):
             tasks.append({
@@ -140,6 +195,58 @@ class TaskExecutor:
         
         return tasks
     
+    def _check_missing_data_files(self, data_types: List[str]) -> List[str]:
+        """Check which data files are missing from generated_data directory."""
+        missing_files = []
+        
+        # File mapping for each data type
+        expected_files = {
+            'accounts': 'generated_accounts.jsonl',
+            'holdings': 'generated_holdings.jsonl', 
+            'asset_details': 'generated_asset_details.jsonl',
+            'news': 'generated_news.jsonl',
+            'reports': 'generated_reports.jsonl'
+        }
+        
+        generated_data_dir = os.path.join(os.getcwd(), 'generated_data')
+        
+        for data_type in data_types:
+            if data_type in expected_files:
+                file_path = os.path.join(generated_data_dir, expected_files[data_type])
+                if not os.path.exists(file_path):
+                    missing_files.append(expected_files[data_type])
+        
+        return missing_files
+    
+    def _handle_validation_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Handle validation tasks that report missing data files."""
+        task_name = task['name']
+        missing_files = task.get('missing_files', [])
+        
+        # Create helpful error message
+        error_msg = f"❌ Missing data files for {task_name}:\n"
+        error_msg += f"   Missing: {', '.join(missing_files)}\n\n"
+        error_msg += "💡 Solutions:\n"
+        error_msg += "   1. Generate missing data first:\n"
+        
+        if task_name == 'accounts':
+            error_msg += "      python3 control.py --custom --accounts --num-accounts 1000\n"
+        elif task_name == 'news':
+            error_msg += "      python3 control.py --custom --news --num-news 100\n"
+        elif task_name == 'reports':
+            error_msg += "      python3 control.py --custom --reports --num-reports 50\n"
+            
+        error_msg += "   2. Or generate all data at once:\n"
+        error_msg += "      python3 control.py --quick-start\n"
+        error_msg += "   3. Only load data types that exist:\n"
+        error_msg += "      python3 control.py --status  # Check what files exist"
+        
+        # Update task status
+        self.active_tasks[task_name]['status'] = 'error'
+        self.active_tasks[task_name]['message'] = f'Missing required data files'
+        
+        return {'success': False, 'error': error_msg}
+    
     def _execute_single_task(self, task: Dict[str, Any]) -> Dict[str, Any]:
         """Execute a single task."""
         task_name = task['name']
@@ -150,6 +257,10 @@ class TaskExecutor:
         # Update task status
         self.active_tasks[task_name]['status'] = 'running'
         self.active_tasks[task_name]['message'] = 'Starting...'
+        
+        # Handle validation tasks (missing data files)
+        if task.get('task_type') == 'validation':
+            return self._handle_validation_task(task)
         
         try:
             # Prepare script execution

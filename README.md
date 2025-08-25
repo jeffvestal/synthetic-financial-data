@@ -350,6 +350,14 @@ os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 **Quick Reference - Common Colab/Jupyter Commands:**
 
 ```python
+# FIRST: Check what data files you have and environment status
+!python3 control.py --status
+
+# THEN: Set Elasticsearch credentials if you want to load data to ES
+import os
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
+os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
+
 # Load all existing data types with current timestamps (most common)
 !python3 control.py --custom --accounts --news --reports --elasticsearch --update-timestamps-on-load
 
@@ -362,14 +370,15 @@ os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 # Generate specific types with custom volumes (requires GEMINI_API_KEY)
 !python3 control.py --custom --accounts --news --reports --elasticsearch --num-accounts 100
 
-# Check system status (no API keys needed)
-!python3 control.py --status
-
 # Update existing Elasticsearch data timestamps to now
 !python3 control.py --update-timestamps
 ```
 
-> **💡 Key Tip**: `--custom` requires explicit data type flags (`--accounts`, `--news`, `--reports`), while `--quick-start` includes everything by default.
+> **💡 Key Tips**: 
+> - Always run `!python3 control.py --status` first to see what data files exist
+> - `--custom` requires explicit data type flags (`--accounts`, `--news`, `--reports`)  
+> - `--elasticsearch` flag requires `ES_API_KEY` environment variable
+> - Loading data requires the data files to exist in `generated_data/` directory
 
 ### Direct Script Execution
 
@@ -727,6 +736,18 @@ ERROR: Could not connect to Elasticsearch
 Error creating index 'financial_accounts': resource_already_exists_exception
 ```
 **Solution**: Index already exists. Use index management to recreate if needed.
+
+#### 3.5. Task Fails with "Process failed with no error details"
+**Problem**: Command like `--custom --accounts --news --reports --elasticsearch` fails even though data files exist.
+**Cause**: Missing Elasticsearch credentials (`ES_API_KEY` not set).
+**Solution**: 
+1. Check status first: `python3 control.py --status`
+2. Set ES credentials: 
+   ```python
+   import os
+   os.environ['ES_API_KEY'] = 'your_key_here'
+   ```
+3. Or remove `--elasticsearch` flag to skip ES loading
 
 #### 4. Import Errors
 ```
