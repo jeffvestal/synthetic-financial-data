@@ -293,24 +293,68 @@ class TaskExecutor:
             stdout_lines = []
             stderr_lines = []
             
-            # Read output line by line for real-time progress tracking
-            while True:
-                output = process.stdout.readline()
-                if output == '' and process.poll() is not None:
-                    break
-                if output:
-                    line = output.strip()
-                    stdout_lines.append(line)
+            # Use communicate() to properly capture both stdout and stderr
+            try:
+                # For real-time progress, we need to read line by line from stdout
+                # But we also need to capture stderr properly
+                import select
+                
+                while process.poll() is None:
+                    # Check if there's data to read from stdout
+                    if sys.platform != 'win32':
+                        # Unix-like systems can use select
+                        ready, _, _ = select.select([process.stdout, process.stderr], [], [], 0.1)
+                        
+                        if process.stdout in ready:
+                            line = process.stdout.readline()
+                            if line:
+                                line = line.strip()
+                                stdout_lines.append(line)
+                                
+                                # Parse progress from output
+                                progress = self._parse_progress_from_output(line)
+                                if progress is not None:
+                                    self.active_tasks[task_name]['progress'] = progress
+                                    self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
+                        
+                        if process.stderr in ready:
+                            line = process.stderr.readline()
+                            if line:
+                                stderr_lines.append(line.strip())
+                    else:
+                        # Windows fallback - read stdout only for progress
+                        line = process.stdout.readline()
+                        if line:
+                            line = line.strip()
+                            stdout_lines.append(line)
+                            
+                            # Parse progress from output
+                            progress = self._parse_progress_from_output(line)
+                            if progress is not None:
+                                self.active_tasks[task_name]['progress'] = progress
+                                self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
+                
+                # Get any remaining output
+                remaining_stdout, remaining_stderr = process.communicate()
+                if remaining_stdout:
+                    stdout_lines.extend(remaining_stdout.strip().split('\n') if remaining_stdout.strip() else [])
+                if remaining_stderr:
+                    stderr_lines.extend(remaining_stderr.strip().split('\n') if remaining_stderr.strip() else [])
                     
-                    # Parse progress from output
-                    progress = self._parse_progress_from_output(line)
-                    if progress is not None:
-                        self.active_tasks[task_name]['progress'] = progress
-                        self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
+            except Exception as e:
+                # Fallback to communicate() if select fails
+                try:
+                    remaining_stdout, remaining_stderr = process.communicate(timeout=30)
+                    if remaining_stdout:
+                        stdout_lines.extend(remaining_stdout.strip().split('\n') if remaining_stdout.strip() else [])
+                    if remaining_stderr:
+                        stderr_lines.extend(remaining_stderr.strip().split('\n') if remaining_stderr.strip() else [])
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    stderr_lines.append("Process timed out and was killed")
             
-            # Get any remaining stderr
-            stderr = process.stderr.read() if process.stderr else ''
             stdout = '\n'.join(stdout_lines)
+            stderr = '\n'.join(stderr_lines)
             
             if process.returncode == 0:
                 # Success
@@ -326,16 +370,38 @@ class TaskExecutor:
                 
                 return {'success': True, 'stdout': stdout}
             else:
-                # Error - show full error message
-                self.active_tasks[task_name]['status'] = 'error' 
-                error_msg = stderr.strip() if stderr.strip() else "Process failed with no error details"
-                self.active_tasks[task_name]['message'] = f'Error: {error_msg}'
+                # Error - show meaningful error message
+                self.active_tasks[task_name]['status'] = 'error'
                 
-                return {'success': False, 'error': stderr, 'stdout': stdout}
+                # Try to extract meaningful error information
+                error_msg = ""
+                if stderr.strip():
+                    # Use stderr if available
+                    error_msg = stderr.strip()
+                elif stdout.strip():
+                    # If no stderr, look at the last few lines of stdout
+                    stdout_lines_list = [line for line in stdout.split('\n') if line.strip()]
+                    if stdout_lines_list:
+                        # Show last 3 lines of stdout for context
+                        error_msg = '\n'.join(stdout_lines_list[-3:])
+                else:
+                    # Last resort - show process info
+                    error_msg = f"Process exited with code {process.returncode}"
+                
+                # Truncate very long error messages for the live display
+                display_msg = error_msg[:100] + "..." if len(error_msg) > 100 else error_msg
+                self.active_tasks[task_name]['message'] = f'Error: {display_msg}'
+                
+                # Store the full error for final summary
+                self.active_tasks[task_name]['full_error'] = error_msg
+                self.active_tasks[task_name]['return_code'] = process.returncode
+                
+                return {'success': False, 'error': error_msg, 'stdout': stdout, 'stderr': stderr}
                 
         except Exception as e:
             self.active_tasks[task_name]['status'] = 'error'
             self.active_tasks[task_name]['message'] = f'Exception: {str(e)}'
+            self.active_tasks[task_name]['full_error'] = str(e)
             return {'success': False, 'error': str(e)}
     
     def _monitor_tasks(self, futures: List, layout: Layout, live: Live):
@@ -590,19 +656,21 @@ class TaskExecutor:
             self.console.print("\n[red]❌ Error Details:[/red]")
             for task_info in error_tasks:
                 task_name = task_info['task']['name']
-                error_msg = task_info['message']
                 
-                # Try to get the full error from the task result if available
-                future_result = getattr(task_info, 'result', None)
-                if future_result and hasattr(future_result, 'result'):
-                    try:
-                        result = future_result.result()
-                        if not result.get('success') and result.get('error'):
-                            full_error = result['error'].strip()
-                            if full_error:
-                                error_msg = f"Error: {full_error}"
-                    except:
-                        pass
+                # Use full error if available, otherwise fall back to message
+                if 'full_error' in task_info and task_info['full_error']:
+                    error_msg = task_info['full_error']
+                    # Add return code for additional context
+                    if 'return_code' in task_info:
+                        error_msg = f"{error_msg} (exit code: {task_info['return_code']})"
+                else:
+                    error_msg = task_info['message']
+                
+                # For very long errors, show first few lines
+                if len(error_msg) > 300:
+                    lines = error_msg.split('\n')
+                    if len(lines) > 5:
+                        error_msg = '\n'.join(lines[:5]) + f"\n... ({len(lines)-5} more lines)"
                 
                 self.console.print(f"  • {task_name}: {error_msg}")
         
