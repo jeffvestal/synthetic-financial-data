@@ -646,8 +646,19 @@ class MenuSystem:
             from common_utils import create_elasticsearch_client
             from index_manager import IndexManager
             
+            self.console.print("🔍 [blue]Connecting to Elasticsearch...[/blue]")
             es_client = create_elasticsearch_client()
             manager = IndexManager(es_client)
+            
+            # Test connection first
+            connection_test = manager.test_connection()
+            if not connection_test['success']:
+                self.console.print(f"[red]❌ Connection test failed:[/red]")
+                self.console.print(f"   Error Type: {connection_test.get('error_type', 'Unknown')}")
+                self.console.print(f"   Error: {connection_test['error']}")
+                return
+            
+            self.console.print(f"✅ [green]Connected to Elasticsearch {connection_test['version']}[/green]")
             
             # Get status of all indices
             statuses = manager.get_all_indices_status()
@@ -658,13 +669,26 @@ class MenuSystem:
             table.add_column("Exists", style="white", width=8)
             table.add_column("Documents", style="white", width=10, justify="right")
             table.add_column("Size", style="white", width=10, justify="right")
+            table.add_column("Errors", style="red", width=30)
             
             total_docs = 0
             total_size = 0
             indices_exist = 0
             
             for status in statuses:
+                # Check for errors first
+                if 'error' in status:
+                    table.add_row(
+                        status['index'],
+                        "❌",
+                        "-",
+                        "-", 
+                        status['error'][:30] + "..." if len(status['error']) > 30 else status['error']
+                    )
+                    continue
+                
                 exists_str = "✓" if status['exists'] else "❌"
+                error_str = ""
                 
                 if status['exists']:
                     indices_exist += 1
@@ -674,8 +698,8 @@ class MenuSystem:
                     # Format document count
                     doc_str = f"{doc_count:,}" if doc_count > 0 else "0"
                     
-                    # Format size
-                    size_bytes = status.get('size_bytes', 0)
+                    # Format size (note: the field is 'size' not 'size_bytes')
+                    size_bytes = status.get('size', 0)
                     total_size += size_bytes
                     
                     if size_bytes >= 1024 * 1024:  # MB
@@ -684,6 +708,13 @@ class MenuSystem:
                         size_str = f"{size_bytes / 1024:.1f} KB"
                     else:
                         size_str = f"{size_bytes} B"
+                    
+                    # Check for sub-errors
+                    errors = []
+                    for key in ['stats_error', 'health_error', 'mapping_error']:
+                        if key in status:
+                            errors.append(status[key].split(':')[0])  # Just the error type
+                    error_str = ", ".join(errors) if errors else ""
                 else:
                     doc_str = "-"
                     size_str = "-"
@@ -692,7 +723,8 @@ class MenuSystem:
                     status['index'],
                     exists_str,
                     doc_str,
-                    size_str
+                    size_str,
+                    error_str
                 )
             
             # Display the table

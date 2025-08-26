@@ -275,9 +275,13 @@ class IndexManager:
             Dict with index status information
         """
         if not self.es_client:
-            return {'error': 'Elasticsearch client not initialized'}
+            return {
+                'index': index_name,
+                'error': 'Elasticsearch client not initialized'
+            }
         
         status = {
+            'index': index_name,
             'name': index_name,
             'exists': False,
             'health': None,
@@ -287,31 +291,91 @@ class IndexManager:
         }
         
         try:
-            if self.index_exists(index_name):
-                status['exists'] = True
-                
+            # First test basic connectivity
+            try:
+                cluster_info = self.es_client.info()
+                # If we get here, basic connection works
+            except Exception as conn_e:
+                return {
+                    'index': index_name,
+                    'error': f'Connection failed: {str(conn_e)}'
+                }
+            
+            # Check if index exists
+            try:
+                exists = self.index_exists(index_name)
+                status['exists'] = exists
+            except Exception as exists_e:
+                return {
+                    'index': index_name,
+                    'error': f'Failed to check if index exists: {str(exists_e)}'
+                }
+            
+            if status['exists']:
                 # Get index stats
-                stats = self.es_client.indices.stats(index=index_name)
-                if index_name in stats['indices']:
-                    index_stats = stats['indices'][index_name]
-                    status['doc_count'] = index_stats['primaries']['docs']['count']
-                    status['size'] = index_stats['primaries']['store']['size_in_bytes']
+                try:
+                    stats = self.es_client.indices.stats(index=index_name)
+                    if index_name in stats['indices']:
+                        index_stats = stats['indices'][index_name]
+                        status['doc_count'] = index_stats['primaries']['docs']['count']
+                        status['size'] = index_stats['primaries']['store']['size_in_bytes']
+                except Exception as stats_e:
+                    status['stats_error'] = f'Failed to get index stats: {str(stats_e)}'
                 
                 # Get index health
-                health = self.es_client.cluster.health(index=index_name)
-                status['health'] = health['status']
+                try:
+                    health = self.es_client.cluster.health(index=index_name)
+                    status['health'] = health['status']
+                except Exception as health_e:
+                    status['health_error'] = f'Failed to get index health: {str(health_e)}'
                 
                 # Check if mapping matches expected
-                current_mapping = self.es_client.indices.get_mapping(index=index_name)
-                expected_mapping = self.get_index_mapping(index_name)
-                if expected_mapping:
-                    # Simple check - could be more sophisticated
-                    status['mapping_match'] = True  # Simplified for now
+                try:
+                    current_mapping = self.es_client.indices.get_mapping(index=index_name)
+                    expected_mapping = self.get_index_mapping(index_name)
+                    if expected_mapping:
+                        # Simple check - could be more sophisticated
+                        status['mapping_match'] = True  # Simplified for now
+                except Exception as mapping_e:
+                    status['mapping_error'] = f'Failed to check mapping: {str(mapping_e)}'
         
         except Exception as e:
-            status['error'] = str(e)
+            return {
+                'index': index_name,
+                'error': f'Unexpected error: {str(e)}'
+            }
         
         return status
+    
+    def test_connection(self) -> Dict[str, Any]:
+        """
+        Test the Elasticsearch connection and return diagnostics.
+        
+        Returns:
+            Dict with connection test results
+        """
+        if not self.es_client:
+            return {
+                'success': False,
+                'error': 'Elasticsearch client not initialized'
+            }
+        
+        try:
+            # Test basic connection
+            info = self.es_client.info()
+            
+            return {
+                'success': True,
+                'cluster_name': info.get('cluster_name', 'Unknown'),
+                'version': info.get('version', {}).get('number', 'Unknown'),
+                'elasticsearch_version': info.get('version', {}).get('distribution', 'elasticsearch')
+            }
+        except Exception as e:
+            return {
+                'success': False,
+                'error': str(e),
+                'error_type': type(e).__name__
+            }
     
     def get_all_indices_status(self) -> List[Dict[str, Any]]:
         """
