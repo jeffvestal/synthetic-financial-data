@@ -672,6 +672,7 @@ class TaskExecutor:
         total_tasks = len(futures)
         progress_counter = 0
         last_progress_update = {}  # Track when we last showed progress for each task
+        completed_indices = set()  # Track which indices have been completed to avoid repeating them
         
         while completed_count < total_tasks:
             if self.stop_requested:
@@ -692,22 +693,9 @@ class TaskExecutor:
                             if isinstance(result, dict) and result.get('success'):
                                 task_info['status'] = 'completed'
                                 
-                                # Show completion for each index if available
-                                index_progress_data = task_info.get('index_progress', {})
-                                if index_progress_data:
-                                    for index_name, index_data in index_progress_data.items():
-                                        current_docs = index_data.get('current_docs', 0)
-                                        total_docs = index_data.get('total_docs', 0)
-                                        start_time = index_data.get('start_time', time.time())
-                                        elapsed_seconds = int(time.time() - start_time)
-                                        elapsed_time = self._format_elapsed_time(elapsed_seconds)
-                                        progress_bar = "█" * 20  # Full bar
-                                        self.console.print(f"[green]✓ {index_name} [{progress_bar}] 100% {elapsed_time} ({current_docs:,}/{total_docs:,} docs) - Completed![/green]")
-                                else:
-                                    # Fallback to task-level completion
-                                    final_progress = task_info.get('progress', 100)
-                                    progress_bar = "█" * 20  # Full bar
-                                    self.console.print(f"[green]✓ {task['description']} [{progress_bar}] {final_progress}% - Completed![/green]")
+                                # Task-level completion message (individual indices already showed completion)
+                                self.console.print(f"[green]🎯 {task['description']} - All indices completed![/green]")
+                                self.console.print()  # Add line break after task completion
                             else:
                                 task_info['status'] = 'error'
                                 self.console.print(f"[red]❌ {task['description']} failed[/red]")
@@ -731,11 +719,11 @@ class TaskExecutor:
                     last_progress_update[task_name] = progress_counter
                     
                 elif task_info and task_info['status'] == 'running':
-                    # Show progress updates every 2 seconds or when progress changes significantly
+                    # Show progress updates every 10 seconds
                     should_update = (
-                        progress_counter % 2 == 0 and (
+                        progress_counter % 10 == 0 and (
                             task_name not in last_progress_update or 
-                            progress_counter - last_progress_update[task_name] >= 2
+                            progress_counter - last_progress_update[task_name] >= 10
                         )
                     )
                     
@@ -744,22 +732,39 @@ class TaskExecutor:
                         index_progress_data = task_info.get('index_progress', {})
                         
                         if index_progress_data:
-                            # Show individual index progress bars
+                            # Show individual index progress bars (only for indices that aren't completed)
                             for index_name, index_data in index_progress_data.items():
                                 percentage = index_data.get('percentage', 0)
-                                current_docs = index_data.get('current_docs', 0)
-                                total_docs = index_data.get('total_docs', 0)
-                                start_time = index_data.get('start_time', time.time())
                                 
-                                # Calculate elapsed time
-                                elapsed_seconds = int(time.time() - start_time)
-                                elapsed_time = self._format_elapsed_time(elapsed_seconds)
+                                # Check if this index just completed
+                                if percentage >= 100 and index_name not in completed_indices:
+                                    current_docs = index_data.get('current_docs', 0)
+                                    total_docs = index_data.get('total_docs', 0)
+                                    start_time = index_data.get('start_time', time.time())
+                                    elapsed_seconds = int(time.time() - start_time)
+                                    elapsed_time = self._format_elapsed_time(elapsed_seconds)
+                                    progress_bar = "█" * 20  # Full bar
+                                    
+                                    # Show completion message with line break
+                                    self.console.print(f"[green]✓ {index_name} [{progress_bar}] 100% {elapsed_time} ({current_docs:,}/{total_docs:,} docs) - Completed![/green]")
+                                    self.console.print()  # Add line break after completion
+                                    completed_indices.add(index_name)
                                 
-                                # Create progress bar
-                                progress_bar = "█" * (percentage // 5) + "░" * (20 - (percentage // 5))
-                                
-                                # Format the complete progress line
-                                self.console.print(f"[dim]   ⏳ {index_name} [{progress_bar}] {percentage}% {elapsed_time} ({current_docs:,}/{total_docs:,} docs)[/dim]")
+                                # Show progress only for indices that aren't completed yet
+                                elif percentage < 100 and index_name not in completed_indices:
+                                    current_docs = index_data.get('current_docs', 0)
+                                    total_docs = index_data.get('total_docs', 0)
+                                    start_time = index_data.get('start_time', time.time())
+                                    
+                                    # Calculate elapsed time
+                                    elapsed_seconds = int(time.time() - start_time)
+                                    elapsed_time = self._format_elapsed_time(elapsed_seconds)
+                                    
+                                    # Create progress bar
+                                    progress_bar = "█" * (percentage // 5) + "░" * (20 - (percentage // 5))
+                                    
+                                    # Format the complete progress line
+                                    self.console.print(f"[dim]   ⏳ {index_name} [{progress_bar}] {percentage}% {elapsed_time} ({current_docs:,}/{total_docs:,} docs)[/dim]")
                         else:
                             # Fallback to task-level progress if no index data
                             current_progress = task_info.get('progress', 0)
