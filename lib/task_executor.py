@@ -93,7 +93,7 @@ class TaskExecutor:
             self.console.print(f"[blue]🚀 Starting {len(tasks)} tasks...[/blue]")
             for task in tasks:
                 self.console.print(f"  • {task['description']}")
-            self.console.print(f"[dim]Progress updates will be shown every 10 seconds for long-running tasks[/dim]")
+            self.console.print(f"[dim]Progress will be shown with percentage bars and updates every few seconds[/dim]")
             self.console.print()
             
             # Submit all tasks
@@ -108,12 +108,12 @@ class TaskExecutor:
                     'start_time': time.time(),
                     'task_id': None
                 }
-                future = self.executor.submit(self._execute_single_task, task)
+                future = self.executor.submit(self._execute_single_task_with_progress, task)
                 futures.append((future, task))
             
             # Monitor tasks with simple progress
             try:
-                self._monitor_tasks_simple(futures)
+                self._monitor_tasks_simple_with_progress(futures)
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]⚠️  Stopping tasks...[/yellow]")
                 self.stop_requested = True
@@ -521,6 +521,217 @@ class TaskExecutor:
             
             time.sleep(0.5)
     
+    def _execute_single_task_with_progress(self, task: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute a single task with real-time progress updates for notebooks."""
+        task_name = task['name']
+        
+        if self.stop_requested:
+            return {'success': False, 'error': 'Stopped by user'}
+        
+        # Update task status
+        self.active_tasks[task_name]['status'] = 'running'
+        self.active_tasks[task_name]['message'] = 'Starting...'
+        
+        # Handle validation tasks (missing data files)
+        if task.get('task_type') == 'validation':
+            return self._handle_validation_task(task)
+        
+        try:
+            # Prepare script execution
+            script_path = task['script']
+            
+            # Create command
+            cmd = [sys.executable, script_path]
+            
+            # Add event-specific arguments for trigger events
+            if task_name == 'trigger_event':
+                event_type = task.get('config', {}).get('event_type', 'bad_news')
+                cmd.extend(['--event-type', event_type])
+            
+            # Set environment variables if needed
+            env = os.environ.copy()
+            
+            # Execute script with real-time output capture
+            self.active_tasks[task_name]['message'] = 'Running script...'
+            
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                env=env,
+                cwd=os.path.dirname(os.path.dirname(__file__))
+            )
+            
+            # Monitor process with real-time output parsing for progress
+            stdout_lines = []
+            stderr_lines = []
+            
+            # Read output line by line to parse progress
+            try:
+                while process.poll() is None and not self.stop_requested:
+                    if process.stdout.readable():
+                        line = process.stdout.readline()
+                        if line:
+                            stdout_lines.append(line.strip())
+                            # Parse progress from the line
+                            progress = self._parse_progress_from_output(line)
+                            if progress is not None:
+                                self.active_tasks[task_name]['progress'] = progress
+                                self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
+                
+                # Get any remaining output
+                remaining_stdout, remaining_stderr = process.communicate()
+                if remaining_stdout:
+                    stdout_lines.extend(remaining_stdout.strip().split('\n') if remaining_stdout.strip() else [])
+                if remaining_stderr:
+                    stderr_lines.extend(remaining_stderr.strip().split('\n') if remaining_stderr.strip() else [])
+                    
+            except Exception as e:
+                # Fallback to communicate() if line-by-line reading fails
+                try:
+                    remaining_stdout, remaining_stderr = process.communicate(timeout=30)
+                    if remaining_stdout:
+                        stdout_lines.extend(remaining_stdout.strip().split('\n') if remaining_stdout.strip() else [])
+                    if remaining_stderr:
+                        stderr_lines.extend(remaining_stderr.strip().split('\n') if remaining_stderr.strip() else [])
+                except subprocess.TimeoutExpired:
+                    process.kill()
+                    stderr_lines.append("Process timed out and was killed")
+            
+            stdout = '\n'.join(stdout_lines)
+            stderr = '\n'.join(stderr_lines)
+            
+            if process.returncode == 0:
+                # Success
+                self.active_tasks[task_name]['status'] = 'completed'
+                self.active_tasks[task_name]['message'] = 'Completed successfully'
+                self.active_tasks[task_name]['progress'] = 100
+                
+                # Move to completed tasks
+                completed_task = self.active_tasks[task_name].copy()
+                completed_task['stdout'] = stdout
+                completed_task['end_time'] = time.time()
+                self.completed_tasks.append(completed_task)
+                
+                return {'success': True, 'stdout': stdout}
+            else:
+                # Error - show meaningful error message
+                self.active_tasks[task_name]['status'] = 'error'
+                
+                # Try to extract meaningful error information
+                error_msg = ""
+                if stderr.strip():
+                    # Use stderr if available
+                    error_msg = stderr.strip()
+                elif stdout.strip():
+                    # Use last few lines of stdout if stderr is empty
+                    stdout_lines = stdout.strip().split('\n')
+                    error_msg = '\n'.join(stdout_lines[-3:])  # Last 3 lines
+                else:
+                    error_msg = f"Process exited with code {process.returncode}"
+                
+                # Store error details
+                display_msg = error_msg[:100] + "..." if len(error_msg) > 100 else error_msg
+                self.active_tasks[task_name]['message'] = f'Error: {display_msg}'
+                
+                # Store the full error for final summary
+                self.active_tasks[task_name]['full_error'] = error_msg
+                self.active_tasks[task_name]['return_code'] = process.returncode
+                
+                return {'success': False, 'error': error_msg, 'stdout': stdout, 'stderr': stderr}
+                
+        except Exception as e:
+            self.active_tasks[task_name]['status'] = 'error'
+            self.active_tasks[task_name]['message'] = f'Exception: {str(e)}'
+            self.active_tasks[task_name]['full_error'] = str(e)
+            return {'success': False, 'error': str(e)}
+    
+    def _monitor_tasks_simple_with_progress(self, futures: List):
+        """Simple task monitoring for notebook environments with percentage progress."""
+        completed_count = 0
+        total_tasks = len(futures)
+        progress_counter = 0
+        last_progress_update = {}  # Track when we last showed progress for each task
+        
+        while completed_count < total_tasks:
+            if self.stop_requested:
+                break
+            
+            progress_counter += 1
+            
+            # Check task completion and report status changes
+            for future, task in futures:
+                task_name = task['name']
+                task_info = self.active_tasks.get(task_name)
+                
+                if task_info and future.done():
+                    if task_info['status'] not in ['completed', 'error']:
+                        # Task just finished, get result
+                        try:
+                            result = future.result()
+                            if isinstance(result, dict) and result.get('success'):
+                                task_info['status'] = 'completed'
+                                final_progress = task_info.get('progress', 100)
+                                progress_bar = "█" * 20  # Full bar
+                                self.console.print(f"[green]✓ {task['description']} [{progress_bar}] {final_progress}% - Completed![/green]")
+                            else:
+                                task_info['status'] = 'error'
+                                self.console.print(f"[red]❌ {task['description']} failed[/red]")
+                                if isinstance(result, dict) and result.get('error'):
+                                    self.console.print(f"   Error: {result['error'][:100]}...")
+                                else:
+                                    self.console.print(f"   Unexpected result: {result}")
+                        except Exception as e:
+                            task_info['status'] = 'error'
+                            import traceback
+                            error_details = f"{type(e).__name__}: {e}"
+                            self.console.print(f"[red]❌ {task['description']} failed with exception: {error_details}[/red]")
+                        
+                        completed_count += 1
+                        
+                elif task_info and task_info['status'] == 'queued':
+                    # Check if task started running
+                    task_info['status'] = 'running' 
+                    task_info['start_progress_time'] = progress_counter
+                    self.console.print(f"[blue]🔄 {task['description']} started[/blue]")
+                    last_progress_update[task_name] = progress_counter
+                    
+                elif task_info and task_info['status'] == 'running':
+                    # Show progress updates every 3 seconds or when progress changes significantly
+                    current_progress = task_info.get('progress', 0)
+                    last_shown_progress = last_progress_update.get(f"{task_name}_progress", 0)
+                    
+                    should_update = (
+                        progress_counter % 3 == 0 and (
+                            task_name not in last_progress_update or 
+                            progress_counter - last_progress_update[task_name] >= 3
+                        )
+                    ) or (current_progress - last_shown_progress >= 5)  # Update if progress jumped 5%+
+                    
+                    if should_update and current_progress > 0:
+                        # Show percentage progress bar
+                        progress_bar = "█" * (current_progress // 5) + "░" * (20 - (current_progress // 5))
+                        self.console.print(f"[dim]   ⏳ {task['description']} [{progress_bar}] {current_progress}%[/dim]")
+                        last_progress_update[task_name] = progress_counter  
+                        last_progress_update[f"{task_name}_progress"] = current_progress
+            
+            time.sleep(1.0)  # Check every second
+        
+        # Show completion summary for notebook environments
+        completed_tasks = [task for task in self.active_tasks.values() if task['status'] == 'completed']
+        failed_tasks = [task for task in self.active_tasks.values() if task['status'] == 'error']
+        
+        self.console.print(f"\n[bold]📊 Task Summary:[/bold]")
+        self.console.print(f"[green]✓ Completed: {len(completed_tasks)}[/green]")
+        if failed_tasks:
+            self.console.print(f"[red]❌ Failed: {len(failed_tasks)}[/red]")
+        else:
+            self.console.print("[dim]❌ Failed: 0[/dim]")
+            
+        if len(completed_tasks) == total_tasks:
+            self.console.print(f"[green]🎉 All tasks completed successfully![/green]")
+
     def _monitor_tasks_simple(self, futures: List):
         """Simple task monitoring for notebook environments with progress indicators."""
         completed_count = 0
@@ -575,14 +786,27 @@ class TaskExecutor:
                     last_progress_update[task_name] = progress_counter
                     
                 elif task_info and task_info['status'] == 'running':
-                    # Show periodic progress updates every 10 seconds (10 iterations)
-                    if progress_counter % 10 == 0 and (
-                        task_name not in last_progress_update or 
-                        progress_counter - last_progress_update[task_name] >= 10
-                    ):
+                    # Show progress updates every 5 seconds (5 iterations) or when progress changes
+                    current_progress = task_info.get('progress', 0)
+                    should_update = (
+                        progress_counter % 5 == 0 and (
+                            task_name not in last_progress_update or 
+                            progress_counter - last_progress_update[task_name] >= 5
+                        )
+                    )
+                    
+                    if should_update:
                         elapsed_time = progress_counter - task_info.get('start_progress_time', 0)
-                        dots = "." * ((elapsed_time // 10) % 4)  # Animated dots
-                        self.console.print(f"[dim]   ⏳ {task['description']} in progress{dots} ({elapsed_time}s)[/dim]")
+                        
+                        if current_progress > 0:
+                            # Show percentage if available
+                            progress_bar = "█" * (current_progress // 5) + "░" * (20 - (current_progress // 5))
+                            self.console.print(f"[dim]   ⏳ {task['description']} [{progress_bar}] {current_progress}%[/dim]")
+                        else:
+                            # Fallback to dots animation if no progress data
+                            dots = "." * ((elapsed_time // 5) % 4)  # Animated dots
+                            self.console.print(f"[dim]   ⏳ {task['description']} in progress{dots} ({elapsed_time}s)[/dim]")
+                        
                         last_progress_update[task_name] = progress_counter
             
             time.sleep(1.0)  # Check every second
@@ -698,16 +922,23 @@ class TaskExecutor:
         if 'completed successfully' in line.lower() or 'finished' in line.lower():
             return 100
         
-        # Look for phase transitions to estimate progress
+        # Look for phase transitions to estimate progress - updated for loading mode
         phase_indicators = {
             'initializing': 5,
             'validating': 10,
-            'generating accounts': 20,
-            'generating holdings': 40,
-            'generating news': 60,
-            'generating reports': 80,
-            'ingesting': 90,
-            'completed': 100
+            'starting': 10,
+            'loading': 15,
+            'reading': 20,
+            'processing': 30,
+            'ingesting accounts': 25,
+            'ingesting holdings': 50,
+            'ingesting asset': 60,
+            'ingesting news': 75,
+            'ingesting reports': 90,
+            'ingesting': 80,  # General ingestion
+            'finished': 95,
+            'completed': 100,
+            'all.*completed': 100
         }
         
         line_lower = line.lower()
