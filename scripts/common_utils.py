@@ -362,10 +362,10 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
             failed_count += len(batch_failed) if batch_failed else 0
             processed_count += len(batch)
             
-            # Show progress update
+            # Show progress update with index name and document counts
             progress_percent = min(100, int((processed_count / total_docs) * 100))
             current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"[{current_timestamp}] Progress: {processed_count}/{total_docs} documents ({progress_percent}%) - {success_count} successful")
+            print(f"[{current_timestamp}] {index_name}: {processed_count}/{total_docs} documents ({progress_percent}%) - {success_count} successful")
         
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success_count} documents into '{index_name}'.")

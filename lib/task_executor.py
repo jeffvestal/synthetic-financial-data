@@ -574,9 +574,28 @@ class TaskExecutor:
                         line = process.stdout.readline()
                         if line:
                             stdout_lines.append(line.strip())
-                            # Parse progress from the line
+                            # Parse both general and index-specific progress
                             progress = self._parse_progress_from_output(line)
-                            if progress is not None:
+                            index_progress = self._parse_index_progress_from_output(line)
+                            
+                            if index_progress:
+                                # Store index-specific progress data
+                                if 'index_progress' not in self.active_tasks[task_name]:
+                                    self.active_tasks[task_name]['index_progress'] = {}
+                                
+                                index_name = index_progress['index_name']
+                                self.active_tasks[task_name]['index_progress'][index_name] = {
+                                    'percentage': index_progress['percentage'],
+                                    'current_docs': index_progress['current_docs'],
+                                    'total_docs': index_progress['total_docs'],
+                                    'start_time': self.active_tasks[task_name]['index_progress'].get(index_name, {}).get('start_time', time.time())
+                                }
+                                
+                                # Update overall task progress to the highest index progress
+                                max_progress = max([idx['percentage'] for idx in self.active_tasks[task_name]['index_progress'].values()])
+                                self.active_tasks[task_name]['progress'] = max_progress
+                                
+                            elif progress is not None:
                                 self.active_tasks[task_name]['progress'] = progress
                                 self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
                 
@@ -672,9 +691,23 @@ class TaskExecutor:
                             result = future.result()
                             if isinstance(result, dict) and result.get('success'):
                                 task_info['status'] = 'completed'
-                                final_progress = task_info.get('progress', 100)
-                                progress_bar = "█" * 20  # Full bar
-                                self.console.print(f"[green]✓ {task['description']} [{progress_bar}] {final_progress}% - Completed![/green]")
+                                
+                                # Show completion for each index if available
+                                index_progress_data = task_info.get('index_progress', {})
+                                if index_progress_data:
+                                    for index_name, index_data in index_progress_data.items():
+                                        current_docs = index_data.get('current_docs', 0)
+                                        total_docs = index_data.get('total_docs', 0)
+                                        start_time = index_data.get('start_time', time.time())
+                                        elapsed_seconds = int(time.time() - start_time)
+                                        elapsed_time = self._format_elapsed_time(elapsed_seconds)
+                                        progress_bar = "█" * 20  # Full bar
+                                        self.console.print(f"[green]✓ {index_name} [{progress_bar}] 100% {elapsed_time} ({current_docs:,}/{total_docs:,} docs) - Completed![/green]")
+                                else:
+                                    # Fallback to task-level completion
+                                    final_progress = task_info.get('progress', 100)
+                                    progress_bar = "█" * 20  # Full bar
+                                    self.console.print(f"[green]✓ {task['description']} [{progress_bar}] {final_progress}% - Completed![/green]")
                             else:
                                 task_info['status'] = 'error'
                                 self.console.print(f"[red]❌ {task['description']} failed[/red]")
@@ -698,23 +731,43 @@ class TaskExecutor:
                     last_progress_update[task_name] = progress_counter
                     
                 elif task_info and task_info['status'] == 'running':
-                    # Show progress updates every 3 seconds or when progress changes significantly
-                    current_progress = task_info.get('progress', 0)
-                    last_shown_progress = last_progress_update.get(f"{task_name}_progress", 0)
-                    
+                    # Show progress updates every 2 seconds or when progress changes significantly
                     should_update = (
-                        progress_counter % 3 == 0 and (
+                        progress_counter % 2 == 0 and (
                             task_name not in last_progress_update or 
-                            progress_counter - last_progress_update[task_name] >= 3
+                            progress_counter - last_progress_update[task_name] >= 2
                         )
-                    ) or (current_progress - last_shown_progress >= 5)  # Update if progress jumped 5%+
+                    )
                     
-                    if should_update and current_progress > 0:
-                        # Show percentage progress bar
-                        progress_bar = "█" * (current_progress // 5) + "░" * (20 - (current_progress // 5))
-                        self.console.print(f"[dim]   ⏳ {task['description']} [{progress_bar}] {current_progress}%[/dim]")
-                        last_progress_update[task_name] = progress_counter  
-                        last_progress_update[f"{task_name}_progress"] = current_progress
+                    if should_update:
+                        # Check if we have index-specific progress data
+                        index_progress_data = task_info.get('index_progress', {})
+                        
+                        if index_progress_data:
+                            # Show individual index progress bars
+                            for index_name, index_data in index_progress_data.items():
+                                percentage = index_data.get('percentage', 0)
+                                current_docs = index_data.get('current_docs', 0)
+                                total_docs = index_data.get('total_docs', 0)
+                                start_time = index_data.get('start_time', time.time())
+                                
+                                # Calculate elapsed time
+                                elapsed_seconds = int(time.time() - start_time)
+                                elapsed_time = self._format_elapsed_time(elapsed_seconds)
+                                
+                                # Create progress bar
+                                progress_bar = "█" * (percentage // 5) + "░" * (20 - (percentage // 5))
+                                
+                                # Format the complete progress line
+                                self.console.print(f"[dim]   ⏳ {index_name} [{progress_bar}] {percentage}% {elapsed_time} ({current_docs:,}/{total_docs:,} docs)[/dim]")
+                        else:
+                            # Fallback to task-level progress if no index data
+                            current_progress = task_info.get('progress', 0)
+                            if current_progress > 0:
+                                progress_bar = "█" * (current_progress // 5) + "░" * (20 - (current_progress // 5))
+                                self.console.print(f"[dim]   ⏳ {task['description']} [{progress_bar}] {current_progress}%[/dim]")
+                        
+                        last_progress_update[task_name] = progress_counter
             
             time.sleep(1.0)  # Check every second
         
@@ -920,6 +973,41 @@ class TaskExecutor:
         # Look for completion indicators
         if 'completed successfully' in line.lower() or 'finished' in line.lower():
             return 100
+    
+    def _parse_index_progress_from_output(self, line: str) -> Optional[dict]:
+        """Parse index-specific progress data from script output line."""
+        import re
+        
+        # Look for pattern: "financial_accounts: 500/7000 documents (7%) - 500 successful"
+        index_progress_pattern = r'(\w+):\s+(\d+)/(\d+)\s+documents\s+\((\d+)%\)'
+        match = re.search(index_progress_pattern, line)
+        
+        if match:
+            return {
+                'index_name': match.group(1),
+                'current_docs': int(match.group(2)),
+                'total_docs': int(match.group(3)),
+                'percentage': int(match.group(4))
+            }
+        
+        return None
+    
+    def _format_elapsed_time(self, seconds: int) -> str:
+        """Format elapsed time in human-readable format."""
+        if seconds < 60:
+            return f"{seconds}s"
+        elif seconds < 3600:
+            minutes = seconds // 60
+            remaining_seconds = seconds % 60
+            if remaining_seconds == 0:
+                return f"{minutes}m"
+            return f"{minutes}m {remaining_seconds}s"
+        else:
+            hours = seconds // 3600
+            remaining_minutes = (seconds % 3600) // 60
+            if remaining_minutes == 0:
+                return f"{hours}h"
+            return f"{hours}h {remaining_minutes}m"
         
         # Look for phase transitions to estimate progress - updated for actual script output patterns
         phase_indicators = {
