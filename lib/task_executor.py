@@ -21,6 +21,27 @@ from rich.table import Table
 from rich.text import Text
 from rich.align import Align
 
+def _is_notebook_environment():
+    """Detect if running in a notebook environment (Colab/Jupyter)."""
+    try:
+        # Check for Google Colab
+        import google.colab
+        return True
+    except ImportError:
+        pass
+    
+    try:
+        # Check for Jupyter notebook/lab
+        from IPython import get_ipython
+        ipython = get_ipython()
+        if ipython is not None and hasattr(ipython, 'kernel'):
+            return True  # Jupyter notebook/lab
+    except ImportError:
+        pass
+    
+    return False
+
+
 class TaskExecutor:
     """Executes data generation tasks with live progress tracking."""
     
@@ -64,10 +85,16 @@ class TaskExecutor:
             self.console.print("[yellow]No tasks to execute[/yellow]")
             return
         
-        # Create layout for live dashboard
-        layout = self._create_dashboard_layout()
+        # Check if we're in a notebook environment
+        is_notebook = _is_notebook_environment()
         
-        with Live(layout, refresh_per_second=2, console=self.console, screen=True) as live:
+        if is_notebook:
+            # Simple progress for notebook environments
+            self.console.print(f"[blue]🚀 Starting {len(tasks)} tasks...[/blue]")
+            for task in tasks:
+                self.console.print(f"  • {task['description']}")
+            self.console.print()
+            
             # Submit all tasks
             futures = []
             for task in tasks:
@@ -82,13 +109,39 @@ class TaskExecutor:
                     'task_id': None
                 }
             
-            # Monitor tasks
+            # Monitor tasks with simple progress
             try:
-                self._monitor_tasks(futures, layout, live)
+                self._monitor_tasks_simple(futures)
             except KeyboardInterrupt:
                 self.console.print("\n[yellow]⚠️  Stopping tasks...[/yellow]")
                 self.stop_requested = True
                 self.executor.shutdown(wait=True)
+        else:
+            # Create layout for live dashboard (terminal only)
+            layout = self._create_dashboard_layout()
+            
+            with Live(layout, refresh_per_second=2, console=self.console, screen=True) as live:
+                # Submit all tasks
+                futures = []
+                for task in tasks:
+                    future = self.executor.submit(self._execute_single_task, task)
+                    futures.append((future, task))
+                    self.active_tasks[task['name']] = {
+                        'task': task,
+                        'status': 'queued',
+                        'progress': 0,
+                        'message': 'Waiting to start...',
+                        'start_time': time.time(),
+                        'task_id': None
+                    }
+                
+                # Monitor tasks
+                try:
+                    self._monitor_tasks(futures, layout, live)
+                except KeyboardInterrupt:
+                    self.console.print("\n[yellow]⚠️  Stopping tasks...[/yellow]")
+                    self.stop_requested = True
+                    self.executor.shutdown(wait=True)
         
         # Show final summary
         self._show_final_summary()
@@ -102,13 +155,8 @@ class TaskExecutor:
         """Plan tasks based on configuration."""
         tasks = []
         
-        # Check if this is a data loading operation (no generation settings)
-        is_loading_existing_data = not any([
-            config.get('num_accounts'),
-            config.get('num_news'), 
-            config.get('num_reports'),
-            config.get('trigger_event')
-        ])
+        # Check if this is a data loading operation (loading existing data with possible timestamp updates)
+        is_loading_existing_data = config.get('update_timestamps_on_load', False)
         
         if config.get('generate_accounts'):
             # Check if data files exist when loading existing data
@@ -461,6 +509,46 @@ class TaskExecutor:
             self._update_dashboard(layout)
             
             time.sleep(0.5)
+    
+    def _monitor_tasks_simple(self, futures: List):
+        """Simple task monitoring for notebook environments."""
+        completed_count = 0
+        total_tasks = len(futures)
+        
+        while completed_count < total_tasks:
+            if self.stop_requested:
+                break
+            
+            # Check task completion and report status changes
+            for future, task in futures:
+                task_name = task['name']
+                task_info = self.active_tasks.get(task_name)
+                
+                if task_info and future.done():
+                    if task_info['status'] not in ['completed', 'error']:
+                        # Task just finished, get result
+                        try:
+                            result = future.result()
+                            if result['success']:
+                                task_info['status'] = 'completed'
+                                self.console.print(f"[green]✓ {task['description']} completed successfully[/green]")
+                            else:
+                                task_info['status'] = 'error'
+                                self.console.print(f"[red]❌ {task['description']} failed[/red]")
+                                if result.get('error'):
+                                    self.console.print(f"   Error: {result['error'][:100]}...")
+                        except Exception as e:
+                            task_info['status'] = 'error'
+                            self.console.print(f"[red]❌ {task['description']} failed with exception: {e}[/red]")
+                        
+                        completed_count += 1
+                        
+                elif task_info and task_info['status'] == 'queued':
+                    # Check if task started running
+                    task_info['status'] = 'running' 
+                    self.console.print(f"[blue]🔄 {task['description']} started[/blue]")
+            
+            time.sleep(1.0)  # Check every second
     
     def _create_dashboard_layout(self) -> Layout:
         """Create the live dashboard layout."""

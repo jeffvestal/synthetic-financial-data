@@ -698,20 +698,22 @@ class MenuSystem:
                     # Format document count
                     doc_str = f"{doc_count:,}" if doc_count > 0 else "0"
                     
-                    # Format size (note: the field is 'size' not 'size_bytes')
-                    size_bytes = status.get('size', 0) or 0  # Ensure not None
-                    total_size += size_bytes
-                    
-                    if size_bytes >= 1024 * 1024:  # MB
-                        size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
-                    elif size_bytes >= 1024:  # KB
-                        size_str = f"{size_bytes / 1024:.1f} KB"
+                    # Format size (note: size may be None in serverless)
+                    size_bytes = status.get('size')
+                    if size_bytes is not None and size_bytes > 0:
+                        total_size += size_bytes
+                        if size_bytes >= 1024 * 1024:  # MB
+                            size_str = f"{size_bytes / (1024 * 1024):.1f} MB"
+                        elif size_bytes >= 1024:  # KB
+                            size_str = f"{size_bytes / 1024:.1f} KB"
+                        else:
+                            size_str = f"{size_bytes} B"
                     else:
-                        size_str = f"{size_bytes} B"
+                        size_str = "N/A"  # Not available in serverless
                     
-                    # Check for sub-errors
+                    # Check for sub-errors (updated for serverless compatibility)
                     errors = []
-                    for key in ['stats_error', 'health_error', 'mapping_error']:
+                    for key in ['count_error', 'mapping_error']:
                         if key in status:
                             errors.append(status[key].split(':')[0])  # Just the error type
                     error_str = ", ".join(errors) if errors else ""
@@ -741,8 +743,11 @@ class MenuSystem:
                 self.console.print(f"[red]❌ No indices exist - run setup first[/red]")
             
             if total_docs > 0:
-                total_size_mb = total_size / (1024 * 1024)
-                self.console.print(f"[dim]Total: {total_docs:,} documents, {total_size_mb:.1f} MB[/dim]")
+                if total_size > 0:
+                    total_size_mb = total_size / (1024 * 1024)
+                    self.console.print(f"[dim]Total: {total_docs:,} documents, {total_size_mb:.1f} MB[/dim]")
+                else:
+                    self.console.print(f"[dim]Total: {total_docs:,} documents (size not available in serverless)[/dim]")
             
             self.console.print()
             

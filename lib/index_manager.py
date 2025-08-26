@@ -312,22 +312,18 @@ class IndexManager:
                 }
             
             if status['exists']:
-                # Get index stats
+                # Try to get basic document count using count API (serverless compatible)
                 try:
-                    stats = self.es_client.indices.stats(index=index_name)
-                    if index_name in stats['indices']:
-                        index_stats = stats['indices'][index_name]
-                        status['doc_count'] = index_stats['primaries']['docs']['count']
-                        status['size'] = index_stats['primaries']['store']['size_in_bytes']
-                except Exception as stats_e:
-                    status['stats_error'] = f'Failed to get index stats: {str(stats_e)}'
+                    count_response = self.es_client.count(index=index_name)
+                    status['doc_count'] = count_response.get('count', 0)
+                except Exception as count_e:
+                    status['count_error'] = f'Failed to get document count: {str(count_e)}'
+                    status['doc_count'] = 0
                 
-                # Get index health
-                try:
-                    health = self.es_client.cluster.health(index=index_name)
-                    status['health'] = health['status']
-                except Exception as health_e:
-                    status['health_error'] = f'Failed to get index health: {str(health_e)}'
+                # Skip index stats and health checks for serverless compatibility
+                # These APIs are not available in Elasticsearch Serverless
+                status['health'] = 'serverless'  # Indicate serverless mode
+                status['size'] = None  # Not available in serverless
                 
                 # Check if mapping matches expected
                 try:
