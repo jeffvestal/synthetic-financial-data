@@ -255,15 +255,22 @@ if __name__ == "__main__":
     DO_INGEST_NEWS = True
     DO_INGEST_REPORTS = True
 
-    # 1. Validate configuration
-    is_valid, errors = validate_config()
+    # 1. Validate configuration based on what we're doing
+    # Only check for Gemini API if we're generating new content
+    needs_gemini = DO_GENERATE_NEWS or DO_GENERATE_REPORTS
+    needs_elasticsearch = DO_INGEST_NEWS or DO_INGEST_REPORTS
+    
+    is_valid, errors = validate_config(
+        check_gemini=needs_gemini,
+        check_elasticsearch=needs_elasticsearch
+    )
     if not is_valid:
         print("ERROR: Configuration validation failed:")
         for error in errors:
             print(f"  - {error}")
         sys.exit(1)
 
-    # 2. Initialize Gemini model
+    # 2. Initialize Gemini model (only if generating)
     if DO_GENERATE_NEWS or DO_GENERATE_REPORTS:
         try:
             gemini_model = configure_gemini()

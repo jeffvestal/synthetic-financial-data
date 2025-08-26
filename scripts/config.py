@@ -223,26 +223,32 @@ HOLDINGS_SETTINGS = {
 }
 
 # --- Validation Functions ---
-def validate_config():
+def validate_config(check_gemini=True, check_elasticsearch=True):
     """
     Validate that required configuration values are set.
+    
+    Args:
+        check_gemini: Whether to validate GEMINI_API_KEY (only needed for generation)
+        check_elasticsearch: Whether to validate ES_API_KEY (needed for ingestion)
     
     Returns:
         tuple: (bool, list) - (is_valid, list_of_errors)
     """
     errors = []
     
-    # Check required environment variables
-    if not ES_CONFIG['api_key']:
+    # Check Elasticsearch if needed
+    if check_elasticsearch and not ES_CONFIG['api_key']:
         errors.append("ES_API_KEY environment variable not set")
     
-    if not GEMINI_CONFIG['api_key']:
+    # Check Gemini only if needed (for generation, not for loading existing data)
+    if check_gemini and not GEMINI_CONFIG['api_key']:
         errors.append("GEMINI_API_KEY environment variable not set")
     
-    # Check required directories exist for prompt files
-    for prompt_name, prompt_file in FILE_PATHS['prompts'].items():
-        if not os.path.exists(prompt_file):
-            errors.append(f"Prompt file not found: {prompt_file}")
+    # Check required directories exist for prompt files (only if generating)
+    if check_gemini:
+        for prompt_name, prompt_file in FILE_PATHS['prompts'].items():
+            if not os.path.exists(prompt_file):
+                errors.append(f"Prompt file not found: {prompt_file}")
     
     return len(errors) == 0, errors
 
