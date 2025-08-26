@@ -366,7 +366,9 @@ class SyntheticDataController:
             'num_news': args.num_news,
             'num_reports': args.num_reports,
             'update_timestamps_on_load': args.update_timestamps_on_load if hasattr(args, 'update_timestamps_on_load') else False,
-            'timestamp_offset': args.timestamp_offset if hasattr(args, 'timestamp_offset') else 0
+            'timestamp_offset': args.timestamp_offset if hasattr(args, 'timestamp_offset') else 0,
+            'bulk_size': args.bulk_size if hasattr(args, 'bulk_size') else 100,
+            'max_parallel_indices': args.max_parallel_indices if hasattr(args, 'max_parallel_indices') else 3
         }
         self._execute_generation(config)
 
@@ -423,6 +425,10 @@ Examples:
                        help="Update timestamps in data files before loading")
     parser.add_argument("--non-interactive", action="store_true",
                        help="Force non-interactive mode (no prompts)")
+    parser.add_argument("--bulk-size", type=int, default=100,
+                       help="Elasticsearch bulk batch size (default: 100, increase for faster ingestion)")
+    parser.add_argument("--max-parallel-indices", type=int, default=3,
+                       help="Maximum number of indices to ingest in parallel (default: 3)")
     
     return parser
 

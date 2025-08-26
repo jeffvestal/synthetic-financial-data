@@ -307,8 +307,15 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         update_timestamps (bool): Whether to update timestamps to current time
         timestamp_offset (int): Hours to offset timestamps from now
     """
-    batch_size = batch_size or ES_CONFIG['bulk_batch_size']
+    # Check for environment variable overrides first
+    batch_size = batch_size or int(os.getenv('ES_BULK_BATCH_SIZE', ES_CONFIG['bulk_batch_size']))
     timeout = timeout or ES_CONFIG['request_timeout']
+    
+    # Check for timestamp settings from environment
+    if not update_timestamps:
+        update_timestamps = os.getenv('UPDATE_TIMESTAMPS_ON_LOAD', 'false').lower() == 'true'
+    if timestamp_offset == 0:
+        timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
     initial_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
@@ -339,39 +346,26 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         for _ in f:
             total_docs += 1
     
-    print(f"[{initial_timestamp}] Processing {total_docs} documents in batches of {batch_size}...")
+    print(f"[{initial_timestamp}] {index_name}: Processing {total_docs} documents with batch size {batch_size}...")
     
     try:
-        success_count = 0
-        failed_count = 0
-        processed_count = 0
-        
-        # Process in batches with progress updates
-        for batch in _batch_documents(_read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
-                                                              update_timestamps, timestamp_offset), batch_size):
-            # Upload this batch
-            batch_success, batch_failed = helpers.bulk(
-                es_client,
-                batch,
-                chunk_size=batch_size,
-                request_timeout=timeout,
-                raise_on_error=False
-            )
-            
-            success_count += batch_success
-            failed_count += len(batch_failed) if batch_failed else 0
-            processed_count += len(batch)
-            
-            # Show progress update with index name and document counts
-            progress_percent = min(100, int((processed_count / total_docs) * 100))
-            current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            print(f"[{current_timestamp}] {index_name}: {processed_count}/{total_docs} documents ({progress_percent}%) - {success_count} successful")
+        # Use single bulk operation for better performance
+        success, failed = helpers.bulk(
+            es_client,
+            _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
+                                    update_timestamps, timestamp_offset),
+            chunk_size=batch_size,
+            request_timeout=timeout,
+            raise_on_error=False
+        )
         
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success_count} documents into '{index_name}'.")
-        if failed_count > 0:
-            print(f"[{final_timestamp}] WARNING: Failed to ingest {failed_count} documents into '{index_name}'.")
-            
+        print(f"[{final_timestamp}] {index_name}: {total_docs}/{total_docs} documents (100%) - {success} successful")
+        print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success} documents into '{index_name}'.")
+        if failed:
+            print(f"[{final_timestamp}] WARNING: Failed to ingest {len(failed)} documents into '{index_name}'. Sample errors:")
+            for item in failed[:5]:
+                print(f"  - {item}")
     except Exception as e:
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(

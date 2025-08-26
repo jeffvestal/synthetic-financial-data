@@ -5,6 +5,7 @@ import json
 import time
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Third-party libraries
 from tqdm import tqdm
@@ -440,18 +441,41 @@ def run_event_generation(event_type='bad_news'):
             print(f"ERROR: Could not connect to Elasticsearch: {e}")
             return
 
-    # 6. Ingest Data into Elasticsearch (if enabled)
+    # 6. Ingest Data into Elasticsearch in parallel (if enabled)
+    ingestion_tasks = []
     if DO_INGEST_NEWS:
-        log_with_timestamp("--- Ingesting Controlled News Articles ---")
-        ingest_data_to_es(es_client, GENERATED_NEWS_FILE, NEWS_INDEX, "article_id")
-    else:
-        print("Skipping controlled news ingestion.")
-
+        ingestion_tasks.append((GENERATED_NEWS_FILE, NEWS_INDEX, "article_id", "Controlled News Articles"))
     if DO_INGEST_REPORTS:
-        log_with_timestamp("--- Ingesting Controlled Reports ---")
-        ingest_data_to_es(es_client, GENERATED_REPORTS_FILE, REPORTS_INDEX, "report_id")
+        ingestion_tasks.append((GENERATED_REPORTS_FILE, REPORTS_INDEX, "report_id", "Controlled Reports"))
+    
+    if ingestion_tasks:
+        log_with_timestamp("--- Starting Parallel Elasticsearch Ingestion ---")
+        
+        def ingest_index(task_info):
+            filepath, index_name, id_field, display_name = task_info
+            try:
+                log_with_timestamp(f"--- Ingesting {display_name} ---")
+                ingest_data_to_es(es_client, filepath, index_name, id_field)
+                return f"{display_name}: Success"
+            except Exception as e:
+                error_msg = f"{display_name}: Error - {str(e)}"
+                print(f"ERROR: {error_msg}")
+                return error_msg
+        
+        # Use ThreadPoolExecutor for parallel ingestion
+        max_parallel = min(len(ingestion_tasks), 2)  # Limit to 2 concurrent ingestions for this script
+        with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            future_to_task = {executor.submit(ingest_index, task): task[3] for task in ingestion_tasks}
+            
+            for future in as_completed(future_to_task):
+                task_name = future_to_task[future]
+                try:
+                    result = future.result()
+                    log_with_timestamp(f"Completed: {result}")
+                except Exception as e:
+                    log_with_timestamp(f"Failed: {task_name} - {str(e)}")
     else:
-        print("Skipping controlled reports ingestion.")
+        print("Skipping all controlled ingestion as no indices are enabled.")
 
     log_with_timestamp(f"All controlled {event_type.replace('_', ' ')} event generation and ingestion processes completed.")
     print(f"\\n🎯 {event_type.replace('_', ' ').title()} Event Summary:")

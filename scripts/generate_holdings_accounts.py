@@ -4,6 +4,7 @@ import uuid
 import json
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Third-party libraries
 from faker import Faker
@@ -283,23 +284,42 @@ if __name__ == "__main__":
             raise
 
 
-    # 5. Ingest Data into Elasticsearch (if enabled)
+    # 5. Ingest Data into Elasticsearch in parallel (if enabled)
+    ingestion_tasks = []
     if DO_INGEST_ACCOUNTS:
-        log_with_timestamp("--- Ingesting Accounts ---")
-        ingest_data_to_es(es_client, GENERATED_ACCOUNTS_FILE, ACCOUNTS_INDEX, "account_id")
-    else:
-        print("Skipping accounts ingestion as DO_INGEST_ACCOUNTS is False.")
-
+        ingestion_tasks.append((GENERATED_ACCOUNTS_FILE, ACCOUNTS_INDEX, "account_id", "Accounts"))
     if DO_INGEST_HOLDINGS:
-        log_with_timestamp("--- Ingesting Holdings ---")
-        ingest_data_to_es(es_client, GENERATED_HOLDINGS_FILE, HOLDINGS_INDEX, "holding_id")
-    else:
-        print("Skipping holdings ingestion as DO_INGEST_HOLDINGS is False.")
-
+        ingestion_tasks.append((GENERATED_HOLDINGS_FILE, HOLDINGS_INDEX, "holding_id", "Holdings"))
     if DO_INGEST_ASSET_DETAILS:
-        log_with_timestamp("--- Ingesting Asset Details ---")
-        ingest_data_to_es(es_client, GENERATED_ASSET_DETAILS_FILE, ASSET_DETAILS_INDEX, "symbol")
+        ingestion_tasks.append((GENERATED_ASSET_DETAILS_FILE, ASSET_DETAILS_INDEX, "symbol", "Asset Details"))
+    
+    if ingestion_tasks:
+        log_with_timestamp("--- Starting Parallel Elasticsearch Ingestion ---")
+        
+        def ingest_index(task_info):
+            filepath, index_name, id_field, display_name = task_info
+            try:
+                log_with_timestamp(f"--- Ingesting {display_name} ---")
+                ingest_data_to_es(es_client, filepath, index_name, id_field)
+                return f"{display_name}: Success"
+            except Exception as e:
+                error_msg = f"{display_name}: Error - {str(e)}"
+                print(f"ERROR: {error_msg}")
+                return error_msg
+        
+        # Use ThreadPoolExecutor for parallel ingestion
+        max_parallel = min(len(ingestion_tasks), 3)  # Limit to 3 concurrent ingestions
+        with ThreadPoolExecutor(max_workers=max_parallel) as executor:
+            future_to_task = {executor.submit(ingest_index, task): task[3] for task in ingestion_tasks}
+            
+            for future in as_completed(future_to_task):
+                task_name = future_to_task[future]
+                try:
+                    result = future.result()
+                    log_with_timestamp(f"Completed: {result}")
+                except Exception as e:
+                    log_with_timestamp(f"Failed: {task_name} - {str(e)}")
     else:
-        print("Skipping asset details ingestion as DO_INGEST_ASSET_DETAILS is False.")
+        print("Skipping all ingestion as no indices are enabled.")
 
     print(f"\n[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] All data generation and ingestion processes completed.")

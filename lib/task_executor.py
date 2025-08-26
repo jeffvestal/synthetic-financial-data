@@ -59,7 +59,7 @@ class TaskExecutor:
             console=console,
             expand=True
         )
-        self.executor = ThreadPoolExecutor(max_workers=4)
+        self.executor = ThreadPoolExecutor(max_workers=12)
         self.stop_requested = False
         self.interactive_mode = True  # Default to interactive
         
@@ -335,6 +335,17 @@ class TaskExecutor:
             
             # Set environment variables if needed
             env = os.environ.copy()
+            
+            # Pass bulk_size and other performance parameters as environment variables
+            config = task.get('config', {})
+            if 'bulk_size' in config:
+                env['ES_BULK_BATCH_SIZE'] = str(config['bulk_size'])
+            if 'max_parallel_indices' in config:
+                env['MAX_PARALLEL_INDICES'] = str(config['max_parallel_indices'])
+            if 'timestamp_offset' in config:
+                env['TIMESTAMP_OFFSET'] = str(config['timestamp_offset'])
+            if 'update_timestamps_on_load' in config:
+                env['UPDATE_TIMESTAMPS_ON_LOAD'] = str(config['update_timestamps_on_load']).lower()
             
             # Execute script
             self.active_tasks[task_name]['message'] = 'Running script...'
