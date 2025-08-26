@@ -98,8 +98,7 @@ class TaskExecutor:
             # Submit all tasks
             futures = []
             for task in tasks:
-                future = self.executor.submit(self._execute_single_task, task)
-                futures.append((future, task))
+                # Populate active_tasks BEFORE submitting to avoid race condition
                 self.active_tasks[task['name']] = {
                     'task': task,
                     'status': 'queued',
@@ -108,6 +107,8 @@ class TaskExecutor:
                     'start_time': time.time(),
                     'task_id': None
                 }
+                future = self.executor.submit(self._execute_single_task, task)
+                futures.append((future, task))
             
             # Monitor tasks with simple progress
             try:
@@ -124,8 +125,7 @@ class TaskExecutor:
                 # Submit all tasks
                 futures = []
                 for task in tasks:
-                    future = self.executor.submit(self._execute_single_task, task)
-                    futures.append((future, task))
+                    # Populate active_tasks BEFORE submitting to avoid race condition
                     self.active_tasks[task['name']] = {
                         'task': task,
                         'status': 'queued',
@@ -134,6 +134,8 @@ class TaskExecutor:
                         'start_time': time.time(),
                         'task_id': None
                     }
+                    future = self.executor.submit(self._execute_single_task, task)
+                    futures.append((future, task))
                 
                 # Monitor tasks
                 try:
@@ -300,10 +302,7 @@ class TaskExecutor:
         if self.stop_requested:
             return {'success': False, 'error': 'Stopped by user'}
         
-        # Update task status - add defensive check
-        if task_name not in self.active_tasks:
-            return {'success': False, 'error': f'Task {task_name} not found in active_tasks dictionary'}
-        
+        # Update task status
         self.active_tasks[task_name]['status'] = 'running'
         self.active_tasks[task_name]['message'] = 'Starting...'
         
