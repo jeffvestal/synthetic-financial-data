@@ -93,6 +93,7 @@ class TaskExecutor:
             self.console.print(f"[blue]🚀 Starting {len(tasks)} tasks...[/blue]")
             for task in tasks:
                 self.console.print(f"  • {task['description']}")
+            self.console.print(f"[dim]Progress updates will be shown every 10 seconds for long-running tasks[/dim]")
             self.console.print()
             
             # Submit all tasks
@@ -178,9 +179,11 @@ class TaskExecutor:
                     'task_type': 'validation'
                 })
             else:
+                # Choose description based on whether we're loading existing data or generating new data
+                description = 'Load Accounts & Holdings Data' if is_loading_existing_data else 'Generate Accounts & Holdings'
                 tasks.append({
                     'name': 'accounts',
-                    'description': 'Generate Accounts & Holdings',
+                    'description': description,
                     'script': self.script_map['accounts'],
                     'estimated_duration': 120,  # seconds
                     'config': config
@@ -218,11 +221,19 @@ class TaskExecutor:
                 })
             else:
                 # Create a single execution task for both
-                description = "Generate News & Reports"
-                if config.get('generate_news') and not config.get('generate_reports'):
-                    description = "Generate News Articles"
-                elif config.get('generate_reports') and not config.get('generate_news'):
-                    description = "Generate Reports"
+                # Choose description based on whether we're loading existing data or generating new data
+                if is_loading_existing_data:
+                    description = "Load News & Reports Data"
+                    if config.get('generate_news') and not config.get('generate_reports'):
+                        description = "Load News Data"
+                    elif config.get('generate_reports') and not config.get('generate_news'):
+                        description = "Load Reports Data"
+                else:
+                    description = "Generate News & Reports"
+                    if config.get('generate_news') and not config.get('generate_reports'):
+                        description = "Generate News Articles"
+                    elif config.get('generate_reports') and not config.get('generate_news'):
+                        description = "Generate Reports"
                     
                 tasks.append({
                     'name': 'news_and_reports',
@@ -511,13 +522,17 @@ class TaskExecutor:
             time.sleep(0.5)
     
     def _monitor_tasks_simple(self, futures: List):
-        """Simple task monitoring for notebook environments."""
+        """Simple task monitoring for notebook environments with progress indicators."""
         completed_count = 0
         total_tasks = len(futures)
+        progress_counter = 0
+        last_progress_update = {}  # Track when we last showed progress for each task
         
         while completed_count < total_tasks:
             if self.stop_requested:
                 break
+            
+            progress_counter += 1
             
             # Check task completion and report status changes
             for future, task in futures:
@@ -555,9 +570,36 @@ class TaskExecutor:
                 elif task_info and task_info['status'] == 'queued':
                     # Check if task started running
                     task_info['status'] = 'running' 
+                    task_info['start_progress_time'] = progress_counter
                     self.console.print(f"[blue]🔄 {task['description']} started[/blue]")
+                    last_progress_update[task_name] = progress_counter
+                    
+                elif task_info and task_info['status'] == 'running':
+                    # Show periodic progress updates every 10 seconds (10 iterations)
+                    if progress_counter % 10 == 0 and (
+                        task_name not in last_progress_update or 
+                        progress_counter - last_progress_update[task_name] >= 10
+                    ):
+                        elapsed_time = progress_counter - task_info.get('start_progress_time', 0)
+                        dots = "." * ((elapsed_time // 10) % 4)  # Animated dots
+                        self.console.print(f"[dim]   ⏳ {task['description']} in progress{dots} ({elapsed_time}s)[/dim]")
+                        last_progress_update[task_name] = progress_counter
             
             time.sleep(1.0)  # Check every second
+        
+        # Show completion summary for notebook environments
+        completed_tasks = [task for task in self.active_tasks.values() if task['status'] == 'completed']
+        failed_tasks = [task for task in self.active_tasks.values() if task['status'] == 'error']
+        
+        self.console.print(f"\n[bold]📊 Task Summary:[/bold]")
+        self.console.print(f"[green]✓ Completed: {len(completed_tasks)}[/green]")
+        if failed_tasks:
+            self.console.print(f"[red]❌ Failed: {len(failed_tasks)}[/red]")
+        else:
+            self.console.print("[dim]❌ Failed: 0[/dim]")
+            
+        if len(completed_tasks) == total_tasks:
+            self.console.print(f"[green]🎉 All tasks completed successfully![/green]")
     
     def _create_dashboard_layout(self) -> Layout:
         """Create the live dashboard layout."""
