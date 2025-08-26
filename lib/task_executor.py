@@ -184,15 +184,30 @@ class TaskExecutor:
                     'config': config
                 })
         
-        if config.get('generate_news'):
+        # Handle news and reports together since they use the same script
+        if config.get('generate_news') or config.get('generate_reports'):
             missing_files = []
+            data_types_to_check = []
+            
+            if config.get('generate_news'):
+                data_types_to_check.append('news')
+            if config.get('generate_reports'):  
+                data_types_to_check.append('reports')
+                
             if is_loading_existing_data:
-                missing_files = self._check_missing_data_files(['news'])
+                missing_files = self._check_missing_data_files(data_types_to_check)
                 
             if missing_files:
+                # Create a single validation task for both
+                description = "Check News & Reports Data Files"
+                if config.get('generate_news') and not config.get('generate_reports'):
+                    description = "Check News Data Files"
+                elif config.get('generate_reports') and not config.get('generate_news'):
+                    description = "Check Reports Data Files"
+                    
                 tasks.append({
-                    'name': 'news',
-                    'description': 'Check News Data Files',
+                    'name': 'news_and_reports',
+                    'description': description,
                     'script': None,
                     'estimated_duration': 1,
                     'config': config,
@@ -200,35 +215,18 @@ class TaskExecutor:
                     'task_type': 'validation'
                 })
             else:
+                # Create a single execution task for both
+                description = "Generate News & Reports"
+                if config.get('generate_news') and not config.get('generate_reports'):
+                    description = "Generate News Articles"
+                elif config.get('generate_reports') and not config.get('generate_news'):
+                    description = "Generate Reports"
+                    
                 tasks.append({
-                    'name': 'news', 
-                    'description': 'Generate News Articles',
-                    'script': self.script_map['news'],
+                    'name': 'news_and_reports',
+                    'description': description,
+                    'script': self.script_map['news'],  # Both use the same script
                     'estimated_duration': 300,
-                    'config': config
-                })
-        
-        if config.get('generate_reports'):
-            missing_files = []
-            if is_loading_existing_data:
-                missing_files = self._check_missing_data_files(['reports'])
-                
-            if missing_files:
-                tasks.append({
-                    'name': 'reports',
-                    'description': 'Check Reports Data Files',
-                    'script': None,
-                    'estimated_duration': 1,
-                    'config': config,
-                    'missing_files': missing_files,
-                    'task_type': 'validation'
-                })
-            else:
-                tasks.append({
-                    'name': 'reports',
-                    'description': 'Generate Reports',
-                    'script': self.script_map['reports'], 
-                    'estimated_duration': 180,
                     'config': config
                 })
         
@@ -302,7 +300,10 @@ class TaskExecutor:
         if self.stop_requested:
             return {'success': False, 'error': 'Stopped by user'}
         
-        # Update task status
+        # Update task status - add defensive check
+        if task_name not in self.active_tasks:
+            return {'success': False, 'error': f'Task {task_name} not found in active_tasks dictionary'}
+        
         self.active_tasks[task_name]['status'] = 'running'
         self.active_tasks[task_name]['message'] = 'Starting...'
         
@@ -529,17 +530,26 @@ class TaskExecutor:
                         # Task just finished, get result
                         try:
                             result = future.result()
-                            if result['success']:
+                            if isinstance(result, dict) and result.get('success'):
                                 task_info['status'] = 'completed'
                                 self.console.print(f"[green]✓ {task['description']} completed successfully[/green]")
                             else:
                                 task_info['status'] = 'error'
                                 self.console.print(f"[red]❌ {task['description']} failed[/red]")
-                                if result.get('error'):
+                                if isinstance(result, dict) and result.get('error'):
                                     self.console.print(f"   Error: {result['error'][:100]}...")
+                                else:
+                                    self.console.print(f"   Unexpected result: {result}")
                         except Exception as e:
                             task_info['status'] = 'error'
-                            self.console.print(f"[red]❌ {task['description']} failed with exception: {e}[/red]")
+                            import traceback
+                            error_details = f"{type(e).__name__}: {e}"
+                            self.console.print(f"[red]❌ {task['description']} failed with exception: {error_details}[/red]")
+                            # Print a few lines of traceback for debugging
+                            tb_lines = traceback.format_exc().split('\n')[-6:-1]  # Last 5 lines
+                            for line in tb_lines:
+                                if line.strip():
+                                    self.console.print(f"   {line.strip()}")
                         
                         completed_count += 1
                         
