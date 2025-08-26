@@ -368,10 +368,15 @@ if __name__ == "__main__":
         # Signal all parallel ingestion completed
         log_with_timestamp(f"All parallel ingestion completed successfully ({completed_tasks}/{total_tasks} indices)")
         sys.stdout.flush()
+        time.sleep(0.2)  # Ensure TaskExecutor processes completion
     else:
         print("Skipping all ingestion as no indices are enabled.")
 
     final_completion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     print(f"\n[{final_completion_timestamp}] ✅ All news and reports generation and ingestion processes completed successfully.")
+    sys.stdout.flush()
+    time.sleep(0.1)  # Ensure TaskExecutor processes completion message
+    
     print(f"[{final_completion_timestamp}] 🎉 Script execution finished - news and reports data ready!")
     sys.stdout.flush()
+    time.sleep(0.2)  # Final pause to ensure all messages are processed

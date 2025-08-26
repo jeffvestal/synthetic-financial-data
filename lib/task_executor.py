@@ -614,13 +614,30 @@ class TaskExecutor:
                                     'start_time': self.active_tasks[task_name]['index_progress'].get(index_name, {}).get('start_time', time.time())
                                 }
                                 
-                                # Update overall task progress to the highest index progress
-                                max_progress = max([idx['percentage'] for idx in self.active_tasks[task_name]['index_progress'].values()])
-                                self.active_tasks[task_name]['progress'] = max_progress
+                                # Calculate progress - use weighted average, but prefer max if all small indices complete
+                                indices = self.active_tasks[task_name]['index_progress'].values()
+                                max_progress = max([idx['percentage'] for idx in indices])
+                                
+                                # Use weighted calculation for more accurate overall progress
+                                total_docs = sum([idx['total_docs'] for idx in indices])
+                                completed_docs = sum([idx['current_docs'] for idx in indices])
+                                
+                                if total_docs > 0:
+                                    weighted_progress = int((completed_docs / total_docs) * 100)
+                                    # Use the higher of weighted or max to avoid going backwards
+                                    calculated_progress = max(max_progress, weighted_progress)
+                                    self.active_tasks[task_name]['progress'] = min(100, calculated_progress)
+                                else:
+                                    self.active_tasks[task_name]['progress'] = max_progress
                                 
                             elif progress is not None:
                                 self.active_tasks[task_name]['progress'] = progress
                                 self.active_tasks[task_name]['message'] = self._extract_message_from_output(line)
+                                
+                            # Check for completion messages that should force 100% progress
+                            if self._is_completion_message(line):
+                                self.active_tasks[task_name]['progress'] = 100
+                                self.active_tasks[task_name]['message'] = 'Completed successfully'
                 
                 # Get any remaining output
                 remaining_stdout, remaining_stderr = process.communicate()
@@ -1028,6 +1045,29 @@ class TaskExecutor:
             }
         
         return None
+    
+    def _is_completion_message(self, line: str) -> bool:
+        """Check if a line contains a completion message that should force 100% progress."""
+        completion_indicators = [
+            '✅ All data generation and ingestion processes completed successfully',
+            '✅ All news and reports generation and ingestion processes completed successfully', 
+            '🎉 Script execution finished',
+            'All parallel ingestion completed successfully',
+            'Finished ingestion. Successfully ingested',
+            'all.*processes completed successfully'  # regex pattern
+        ]
+        
+        line_lower = line.lower()
+        for indicator in completion_indicators:
+            if '.*' in indicator:
+                # Handle regex patterns
+                import re
+                if re.search(indicator, line_lower):
+                    return True
+            else:
+                if indicator.lower() in line_lower:
+                    return True
+        return False
     
     def _format_elapsed_time(self, seconds: int) -> str:
         """Format elapsed time in human-readable format."""

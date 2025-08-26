@@ -384,14 +384,16 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
                 print(f"ERROR: Batch processing error for {index_name}: {batch_e}")
                 break
         
-        # Ensure we always show 100% completion
+        # Ensure we always show 100% completion with proper timing
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         if success_count > 0:
             print(f"[{final_timestamp}] {index_name}: {success_count}/{total_docs} documents (100%) - {success_count} successful")
             sys.stdout.flush()
+            time.sleep(0.1)  # Brief pause to ensure TaskExecutor parses 100% progress
         
         print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success_count} documents into '{index_name}'.")
         sys.stdout.flush()
+        time.sleep(0.1)  # Ensure completion message is processed
         
         if failed_count > 0:
             print(f"[{final_timestamp}] WARNING: Failed to ingest {failed_count} documents into '{index_name}'.")
