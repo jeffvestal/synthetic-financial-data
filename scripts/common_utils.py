@@ -332,26 +332,63 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         print(f"[{initial_timestamp}] Timestamps will be updated during ingestion (offset: {timestamp_offset} hours)")
     
     print(f"\n[{initial_timestamp}] Starting ingestion from '{filepath}' into index '{index_name}'...")
+    
+    # Count total documents first for progress tracking
+    total_docs = 0
+    with open(filepath, 'r') as f:
+        for _ in f:
+            total_docs += 1
+    
+    print(f"[{initial_timestamp}] Processing {total_docs} documents in batches of {batch_size}...")
+    
     try:
-        success, failed = helpers.bulk(
-            es_client,
-            _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
-                                    update_timestamps, timestamp_offset),
-            chunk_size=batch_size,
-            request_timeout=timeout,
-            raise_on_error=False
-        )
+        success_count = 0
+        failed_count = 0
+        processed_count = 0
+        
+        # Process in batches with progress updates
+        for batch in _batch_documents(_read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
+                                                              update_timestamps, timestamp_offset), batch_size):
+            # Upload this batch
+            batch_success, batch_failed = helpers.bulk(
+                es_client,
+                batch,
+                chunk_size=batch_size,
+                request_timeout=timeout,
+                raise_on_error=False
+            )
+            
+            success_count += batch_success
+            failed_count += len(batch_failed) if batch_failed else 0
+            processed_count += len(batch)
+            
+            # Show progress update
+            progress_percent = min(100, int((processed_count / total_docs) * 100))
+            current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            print(f"[{current_timestamp}] Progress: {processed_count}/{total_docs} documents ({progress_percent}%) - {success_count} successful")
+        
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success} documents into '{index_name}'.")
-        if failed:
-            print(
-                f"[{final_timestamp}] WARNING: Failed to ingest {len(failed)} documents into '{index_name}'. Sample errors:")
-            for item in failed[:5]:
-                print(f"  - {item}")
+        print(f"[{final_timestamp}] Finished ingestion. Successfully ingested {success_count} documents into '{index_name}'.")
+        if failed_count > 0:
+            print(f"[{final_timestamp}] WARNING: Failed to ingest {failed_count} documents into '{index_name}'.")
+            
     except Exception as e:
         final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(
             f"[{final_timestamp}] ERROR: An exception occurred during bulk ingestion from '{filepath}' to '{index_name}': {e}")
+
+def _batch_documents(document_generator, batch_size: int):
+    """Batch documents from a generator into chunks."""
+    batch = []
+    for doc in document_generator:
+        batch.append(doc)
+        if len(batch) >= batch_size:
+            yield batch
+            batch = []
+    
+    # Yield any remaining documents
+    if batch:
+        yield batch
 
 # --- Progress and Logging Utilities ---
 

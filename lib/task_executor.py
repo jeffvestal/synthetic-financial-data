@@ -904,38 +904,37 @@ class TaskExecutor:
         """Parse progress percentage from script output line."""
         import re
         
-        # Look for tqdm progress patterns like "50%|████████████" or "Progress: 50%"
-        tqdm_pattern = r'(\d+)%\|'
-        progress_pattern = r'(\d+)%'
+        # Look for various progress patterns
+        patterns = [
+            r'(\d+)%\|',  # tqdm format: "50%|████████████"
+            r'Progress:.*?(\d+)%',  # "Progress: 1234/5000 documents (25%)"
+            r'\((\d+)%\)',  # "(25%)"
+            r'(\d+)%'  # General "50%"
+        ]
         
-        # Check for tqdm format first
-        match = re.search(tqdm_pattern, line)
-        if match:
-            return int(match.group(1))
-        
-        # Check for general progress format
-        match = re.search(progress_pattern, line)
-        if match:
-            return int(match.group(1))
+        for pattern in patterns:
+            match = re.search(pattern, line)
+            if match:
+                return int(match.group(1))
         
         # Look for completion indicators
         if 'completed successfully' in line.lower() or 'finished' in line.lower():
             return 100
         
-        # Look for phase transitions to estimate progress - updated for loading mode
+        # Look for phase transitions to estimate progress - updated for actual script output patterns
         phase_indicators = {
             'initializing': 5,
             'validating': 10,
+            'starting ingestion': 15,
             'starting': 10,
-            'loading': 15,
-            'reading': 20,
-            'processing': 30,
-            'ingesting accounts': 25,
-            'ingesting holdings': 50,
-            'ingesting asset': 60,
-            'ingesting news': 75,
-            'ingesting reports': 90,
-            'ingesting': 80,  # General ingestion
+            '--- ingesting accounts ---': 25,
+            '--- ingesting holdings ---': 50, 
+            '--- ingesting asset details ---': 60,
+            '--- ingesting news ---': 75,
+            '--- ingesting reports ---': 90,
+            'finished ingestion': 95,
+            'successfully ingested': 100,
+            'ingesting': 20,  # General fallback
             'finished': 95,
             'completed': 100,
             'all.*completed': 100
