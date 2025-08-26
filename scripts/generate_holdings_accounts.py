@@ -341,8 +341,8 @@ if __name__ == "__main__":
                 log_with_timestamp("ERROR: Overall ingestion timed out after 30 minutes")
                 sys.stdout.flush()
             
-            # Ensure executor properly shuts down
-            executor.shutdown(wait=True, timeout=30)
+            # Don't wait for shutdown in Colab - just let it finish naturally
+            pass
         
         # Signal all parallel ingestion completed
         log_with_timestamp(f"All parallel ingestion completed successfully ({completed_tasks}/{total_tasks} indices)")
