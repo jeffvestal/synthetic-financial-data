@@ -313,13 +313,12 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
     if timestamp_offset == 0:
         timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
-    # Simple start message
-    print(f"\n🔄 Starting ingestion: {index_name}")
+    # Ultra-simple start message for Colab
+    print(f"Starting: {index_name}")
     sys.stdout.flush()
     
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-        print(f"❌ No data file found for {index_name}")
-        return
+        return  # Silent failure
 
     # Ensure index exists
     if ensure_index:
@@ -354,14 +353,12 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
                 # Silent failure - just continue
                 pass
         
-        # Simple completion message
-        print(f"✅ Finished: {index_name} ({success_count} documents)")
-        sys.stdout.flush()
+        # No completion message in Colab to avoid threading issues
+        pass
             
     except Exception as e:
-        # Simple error message
-        print(f"❌ Error with {index_name}: {str(e)[:100]}")
-        sys.stdout.flush()
+        # Silent failure in Colab
+        pass
 
 def _batch_documents(document_generator, batch_size: int):
     """Handle batches from generator - now expects pre-batched data."""

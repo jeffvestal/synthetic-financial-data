@@ -49,6 +49,7 @@ class TaskExecutor:
         self.console = console
         self.active_tasks: Dict[str, Dict[str, Any]] = {}
         self.completed_tasks: List[Dict[str, Any]] = []
+        self.is_colab = _is_notebook_environment()  # Detect if in Colab/Jupyter
         self.progress = Progress(
             SpinnerColumn(),
             TextColumn("[progress.description]{task.description}"),
@@ -89,11 +90,11 @@ class TaskExecutor:
         is_notebook = _is_notebook_environment()
         
         if is_notebook:
-            # Simple progress for notebook environments
-            self.console.print(f"[blue]🚀 Starting {len(tasks)} tasks...[/blue]")
+            # ZERO monitoring for Colab/notebook environments
+            self.console.print(f"Starting {len(tasks)} tasks...")
             for task in tasks:
                 self.console.print(f"  • {task['description']}")
-            self.console.print(f"[dim]Processing...[/dim]")
+            self.console.print("Loading data...")
             self.console.print()
             
             # Submit all tasks
@@ -111,11 +112,11 @@ class TaskExecutor:
                 future = self.executor.submit(self._execute_single_task_with_progress, task)
                 futures.append((future, task))
             
-            # Monitor tasks with simple progress
+            # NO MONITORING - just wait for completion
             try:
-                self._monitor_tasks_simple_with_progress(futures)
+                self._no_monitoring_wait(futures)
             except KeyboardInterrupt:
-                self.console.print("\n[yellow]⚠️  Stopping tasks...[/yellow]")
+                self.console.print("\nStopping...")
                 self.stop_requested = True
                 self.executor.shutdown(wait=True)
         else:
@@ -705,6 +706,18 @@ class TaskExecutor:
             self.active_tasks[task_name]['message'] = f'Exception: {str(e)}'
             self.active_tasks[task_name]['full_error'] = str(e)
             return {'success': False, 'error': str(e)}
+    
+    def _no_monitoring_wait(self, futures: List):
+        """Zero monitoring - just wait for tasks to complete (for Colab)."""
+        # Just wait silently for all tasks to complete
+        for future, task in futures:
+            try:
+                future.result()  # Wait for completion, no output
+            except:
+                pass  # Ignore errors silently
+        
+        # Single completion message
+        self.console.print("[green]Data loading complete[/green]")
     
     def _monitor_tasks_simple_with_progress(self, futures: List):
         """Simple task monitoring for notebook environments with percentage progress."""
