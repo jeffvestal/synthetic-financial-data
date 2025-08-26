@@ -93,7 +93,7 @@ class TaskExecutor:
             self.console.print(f"[blue]🚀 Starting {len(tasks)} tasks...[/blue]")
             for task in tasks:
                 self.console.print(f"  • {task['description']}")
-            self.console.print(f"[dim]Progress will be shown with percentage bars and updates every few seconds[/dim]")
+            self.console.print(f"[dim]Processing...[/dim]")
             self.console.print()
             
             # Submit all tasks

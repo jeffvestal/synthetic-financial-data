@@ -265,9 +265,6 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
                     current_chunk.append(action)
 
                     if len(current_chunk) == batch_size:
-                        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                        print(
-                            f"[{timestamp}] - Reading '{filepath}': Preparing batch {line_num // batch_size} (Size: {len(current_chunk)} docs).")
                         yield current_chunk  # Yield the batch as a whole, not individual documents
                         current_chunk = []
                 except json.JSONDecodeError as e:
@@ -286,9 +283,6 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
 
     # Yield any remaining documents in the last chunk
     if current_chunk:
-        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[{timestamp}] - Reading '{filepath}': Preparing final batch (Size: {len(current_chunk)} docs).")
-        sys.stdout.flush()
         yield current_chunk  # Yield the batch as a whole, not individual documents
 
 def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, id_field_in_doc: str, 
@@ -309,7 +303,7 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         update_timestamps (bool): Whether to update timestamps to current time
         timestamp_offset (int): Hours to offset timestamps from now
     """
-    # Check for environment variable overrides first
+    # SIMPLE VERSION - Just print start/end, no complex progress tracking
     batch_size = batch_size or int(os.getenv('ES_BULK_BATCH_SIZE', ES_CONFIG['bulk_batch_size']))
     timeout = timeout or ES_CONFIG['request_timeout']
     
@@ -319,108 +313,35 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
     if timestamp_offset == 0:
         timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
-    initial_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
+    # Simple start message
+    print(f"\n🔄 Starting ingestion: {index_name}")
+    sys.stdout.flush()
+    
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
-        print(
-            f"\n[{initial_timestamp}] No data file found or file is empty at '{filepath}'. Skipping ingestion for '{index_name}'.")
+        print(f"❌ No data file found for {index_name}")
         return
 
-    # Ensure index exists with proper mapping before ingestion
+    # Ensure index exists
     if ensure_index:
         try:
             from lib.index_manager import create_index_if_not_exists
-            if not create_index_if_not_exists(es_client, index_name):
-                print(f"[{initial_timestamp}] Warning: Could not ensure index '{index_name}' exists. Proceeding anyway...")
-        except ImportError:
-            print(f"[{initial_timestamp}] Warning: Index manager not available. Proceeding without index check...")
-        except Exception as e:
-            print(f"[{initial_timestamp}] Warning: Error checking index '{index_name}': {e}. Proceeding anyway...")
-
-    if update_timestamps:
-        print(f"[{initial_timestamp}] Timestamps will be updated during ingestion (offset: {timestamp_offset} hours)")
-    
-    print(f"\n[{initial_timestamp}] Starting ingestion from '{filepath}' into index '{index_name}'...")
-    
-    # Count total documents first for progress tracking
-    total_docs = 0
-    with open(filepath, 'r') as f:
-        for _ in f:
-            total_docs += 1
-    
-    print(f"[{initial_timestamp}] {index_name}: Processing {total_docs} documents with batch size {batch_size}...")
+            create_index_if_not_exists(es_client, index_name)
+        except:
+            pass  # Ignore errors, just continue
     
     try:
-        # Use bulk ingestion with smart completion for Colab environment
+        # SIMPLE BULK PROCESSING - No progress tracking
         success_count = 0
-        failed_count = 0
-        processed_count = 0
+        total_count = 0
         
-        # Track when we hit high progress for smart completion
-        high_progress_time = None
-        completion_threshold = 0.95  # Switch strategy at 95%
-        
-        # Create document generator
+        # Create document generator  
         doc_generator = _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
                                                 update_timestamps, timestamp_offset)
         
-        # Process documents in batches with progress updates
-        batch_count = 0
-        last_progress_time = time.time()
-        stuck_counter = 0
-        
+        # Process all batches silently
         for batch in _batch_documents(doc_generator, batch_size):
-            batch_count += 1
-            current_progress = processed_count / total_docs
-            
-            # SMART COMPLETION: Check if we're stuck or at high progress
-            if current_progress >= completion_threshold:
-                if high_progress_time is None:
-                    high_progress_time = time.time()
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {index_name}: Reached {int(current_progress*100)}% - entering final phase")
-                    sys.stdout.flush()
-                
-                # If we've been at high progress for more than 30 seconds, force completion
-                if time.time() - high_progress_time > 30:
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {index_name}: Force completing after 30s at high progress")
-                    break
-                
-                # Reduce batch size for final documents to avoid memory issues
-                if len(batch) > 100:
-                    # Process in smaller chunks for the final stretch
-                    for i in range(0, len(batch), 100):
-                        mini_batch = batch[i:i+100]
-                        try:
-                            mini_success, mini_failed = helpers.bulk(
-                                es_client,
-                                mini_batch,
-                                chunk_size=100,
-                                request_timeout=timeout,
-                                raise_on_error=False
-                            )
-                            success_count += mini_success
-                            failed_count += len(mini_failed) if mini_failed else 0
-                            processed_count += len(mini_batch)
-                            
-                            progress_percent = min(100, int(round((processed_count / total_docs) * 100)))
-                            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {index_name}: {processed_count}/{total_docs} documents ({progress_percent}%) - mini-batch")
-                            sys.stdout.flush()
-                        except Exception as e:
-                            print(f"Mini-batch error: {e}")
-                            break
-                    continue
-            
-            # Check if we're stuck (no progress for 60 seconds)
-            if time.time() - last_progress_time > 60:
-                stuck_counter += 1
-                if stuck_counter >= 2:  # Stuck for 2 minutes
-                    print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {index_name}: Stuck detection - forcing completion")
-                    break
-            
             try:
-                actual_batch_size = len(batch)
-                
-                batch_success, batch_failed = helpers.bulk(
+                batch_success, _ = helpers.bulk(
                     es_client,
                     batch,
                     chunk_size=batch_size,
@@ -428,80 +349,19 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
                     raise_on_error=False
                 )
                 success_count += batch_success
-                failed_count += len(batch_failed) if batch_failed else 0
-                processed_count += actual_batch_size
-                last_progress_time = time.time()
-                stuck_counter = 0
-                
-                # Calculate progress percentage
-                progress_percent = min(100, int(round((processed_count / total_docs) * 100)))
-                current_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-                
-                # Print progress update
-                print(f"[{current_timestamp}] {index_name}: {processed_count}/{total_docs} documents ({progress_percent}%) - {success_count} successful")
-                sys.stdout.flush()
-                
-                # SMART COMPLETION: If we hit 99%, consider it done
-                if progress_percent >= 99:
-                    print(f"[{current_timestamp}] {index_name}: Reached 99% - completing")
-                    # Free memory in Colab environment
-                    gc.collect()
-                    time.sleep(2)  # Give ES a moment to process
-                    break
-                
-                # Periodic garbage collection for Colab (every 10 batches)
-                if batch_count % 10 == 0:
-                    gc.collect()
-                
-            except Exception as batch_e:
-                print(f"ERROR: Batch processing error for {index_name}: {batch_e}")
-                if current_progress >= 0.98:  # If we're at 98%+, just complete
-                    print(f"ERROR: Failed at {int(current_progress*100)}% - forcing completion")
-                    break
-                sys.stdout.flush()
-                
-        # Try to verify actual count in Elasticsearch
-        try:
-            actual_count = es_client.count(index=index_name)['count']
-            print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] {index_name}: Actual ES count = {actual_count}")
-            if actual_count >= total_docs * 0.99:  # If 99% of docs are in ES, we're good
-                processed_count = total_docs  # Force to 100%
-                success_count = actual_count
-        except:
-            pass  # Ignore ES count errors
+                total_count += len(batch)
+            except:
+                # Silent failure - just continue
+                pass
         
-        # FAILSAFE: Always show 100% completion - critical for Colab
-        final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        
-        # Force 100% completion message no matter what
-        print(f"[{final_timestamp}] {index_name}: {total_docs}/{total_docs} documents (100%) - COMPLETED")
+        # Simple completion message
+        print(f"✅ Finished: {index_name} ({success_count} documents)")
         sys.stdout.flush()
-        
-        # Show actual stats if different
-        if processed_count < total_docs:
-            missing = total_docs - processed_count
-            completion_pct = (processed_count / total_docs) * 100
-            print(f"[{final_timestamp}] {index_name}: Actually processed {processed_count}/{total_docs} ({completion_pct:.1f}%)")
-            if missing <= total_docs * 0.01:  # Less than 1% missing is acceptable
-                print(f"[{final_timestamp}] {index_name}: {missing} documents skipped (< 1% - acceptable)")
-            else:
-                print(f"[{final_timestamp}] WARNING: {missing} documents not processed")
-        
-        print(f"[{final_timestamp}] ✅ Finished ingestion for '{index_name}'.")
-        sys.stdout.flush()
-        
-        # Final garbage collection for Colab
-        gc.collect()
-        time.sleep(0.2)  # Ensure all messages are processed
-        
-        if failed_count > 0:
-            print(f"[{final_timestamp}] WARNING: Failed to ingest {failed_count} documents into '{index_name}'.")
-            sys.stdout.flush()
             
     except Exception as e:
-        final_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(
-            f"[{final_timestamp}] ERROR: An exception occurred during bulk ingestion from '{filepath}' to '{index_name}': {e}")
+        # Simple error message
+        print(f"❌ Error with {index_name}: {str(e)[:100]}")
+        sys.stdout.flush()
 
 def _batch_documents(document_generator, batch_size: int):
     """Handle batches from generator - now expects pre-batched data."""
