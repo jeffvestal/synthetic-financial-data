@@ -692,14 +692,14 @@ class MenuSystem:
                 
                 if status['exists']:
                     indices_exist += 1
-                    doc_count = status.get('doc_count', 0)
+                    doc_count = status.get('doc_count', 0) or 0  # Ensure not None
                     total_docs += doc_count
                     
                     # Format document count
                     doc_str = f"{doc_count:,}" if doc_count > 0 else "0"
                     
                     # Format size (note: the field is 'size' not 'size_bytes')
-                    size_bytes = status.get('size', 0)
+                    size_bytes = status.get('size', 0) or 0  # Ensure not None
                     total_size += size_bytes
                     
                     if size_bytes >= 1024 * 1024:  # MB
