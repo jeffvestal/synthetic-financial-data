@@ -348,18 +348,30 @@ if __name__ == "__main__":
         
         # Use ThreadPoolExecutor for parallel ingestion
         max_parallel = min(len(ingestion_tasks), 2)  # Limit to 2 concurrent ingestions for this script
+        completed_tasks = 0
+        total_tasks = len(ingestion_tasks)
+        
         with ThreadPoolExecutor(max_workers=max_parallel) as executor:
             future_to_task = {executor.submit(ingest_index, task): task[3] for task in ingestion_tasks}
             
             for future in as_completed(future_to_task):
                 task_name = future_to_task[future]
+                completed_tasks += 1
                 try:
                     result = future.result()
-                    # Result already logged in ingest_index function
+                    log_with_timestamp(f"Progress: {completed_tasks}/{total_tasks} indices completed")
+                    sys.stdout.flush()
                 except Exception as e:
                     log_with_timestamp(f"Failed: {task_name} - {str(e)}")
                     sys.stdout.flush()
+        
+        # Signal all parallel ingestion completed
+        log_with_timestamp(f"All parallel ingestion completed successfully ({completed_tasks}/{total_tasks} indices)")
+        sys.stdout.flush()
     else:
         print("Skipping all ingestion as no indices are enabled.")
 
-    log_with_timestamp("All news and reports generation and ingestion processes completed.")
+    final_completion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    print(f"\n[{final_completion_timestamp}] ✅ All news and reports generation and ingestion processes completed successfully.")
+    print(f"[{final_completion_timestamp}] 🎉 Script execution finished - news and reports data ready!")
+    sys.stdout.flush()

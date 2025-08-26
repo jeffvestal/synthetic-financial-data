@@ -368,8 +368,20 @@ class TaskExecutor:
                 # For real-time progress, we need to read line by line from stdout
                 # But we also need to capture stderr properly
                 import select
+                import time
+                
+                start_time = time.time()
+                timeout_seconds = 30 * 60  # 30 minutes maximum per task
                 
                 while process.poll() is None:
+                    # Check for timeout
+                    if time.time() - start_time > timeout_seconds:
+                        self.active_tasks[task_name]['message'] = 'Task timed out - terminating'
+                        process.terminate()
+                        time.sleep(2)  # Give it a moment to clean up
+                        if process.poll() is None:
+                            process.kill()  # Force kill if still running
+                        return {'success': False, 'error': f'Task timed out after {timeout_seconds/60:.1f} minutes'}
                     # Check if there's data to read from stdout
                     if sys.platform != 'win32':
                         # Unix-like systems can use select
@@ -987,8 +999,17 @@ class TaskExecutor:
                 return int(match.group(1))
         
         # Look for completion indicators
-        if 'completed successfully' in line.lower() or 'finished' in line.lower():
-            return 100
+        completion_phrases = [
+            'completed successfully',
+            'finished',
+            'all parallel ingestion completed successfully',
+            'all data generation and ingestion processes completed',
+            'all news and reports generation and ingestion processes completed'
+        ]
+        
+        for phrase in completion_phrases:
+            if phrase in line.lower():
+                return 100
     
     def _parse_index_progress_from_output(self, line: str) -> Optional[dict]:
         """Parse index-specific progress data from script output line."""
