@@ -455,11 +455,16 @@ def run_event_generation(event_type='bad_news'):
             filepath, index_name, id_field, display_name = task_info
             try:
                 log_with_timestamp(f"--- Ingesting {display_name} ---")
+                sys.stdout.flush()  # Ensure immediate output
                 ingest_data_to_es(es_client, filepath, index_name, id_field)
-                return f"{display_name}: Success"
+                result = f"{display_name}: Success"
+                log_with_timestamp(f"Completed: {result}")
+                sys.stdout.flush()  # Ensure immediate output
+                return result
             except Exception as e:
                 error_msg = f"{display_name}: Error - {str(e)}"
                 print(f"ERROR: {error_msg}")
+                sys.stdout.flush()  # Ensure immediate output
                 return error_msg
         
         # Use ThreadPoolExecutor for parallel ingestion
@@ -471,9 +476,10 @@ def run_event_generation(event_type='bad_news'):
                 task_name = future_to_task[future]
                 try:
                     result = future.result()
-                    log_with_timestamp(f"Completed: {result}")
+                    # Result already logged in ingest_index function
                 except Exception as e:
                     log_with_timestamp(f"Failed: {task_name} - {str(e)}")
+                    sys.stdout.flush()
     else:
         print("Skipping all controlled ingestion as no indices are enabled.")
 
