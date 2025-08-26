@@ -313,7 +313,7 @@ if __name__ == "__main__":
                 sys.stdout.flush()  # Ensure immediate output
                 return error_msg
         
-        # Use ThreadPoolExecutor for parallel ingestion
+        # Use ThreadPoolExecutor for parallel ingestion with proper synchronization
         max_parallel = min(len(ingestion_tasks), 3)  # Limit to 3 concurrent ingestions
         completed_tasks = 0
         total_tasks = len(ingestion_tasks)
@@ -321,16 +321,28 @@ if __name__ == "__main__":
         with ThreadPoolExecutor(max_workers=max_parallel) as executor:
             future_to_task = {executor.submit(ingest_index, task): task[3] for task in ingestion_tasks}
             
-            for future in as_completed(future_to_task):
-                task_name = future_to_task[future]
-                completed_tasks += 1
-                try:
-                    result = future.result()
-                    log_with_timestamp(f"Progress: {completed_tasks}/{total_tasks} indices completed")
-                    sys.stdout.flush()
-                except Exception as e:
-                    log_with_timestamp(f"Failed: {task_name} - {str(e)}")
-                    sys.stdout.flush()
+            # Wait for all futures with a timeout
+            import concurrent.futures
+            try:
+                for future in as_completed(future_to_task, timeout=1800):  # 30 minute timeout
+                    task_name = future_to_task[future]
+                    completed_tasks += 1
+                    try:
+                        result = future.result(timeout=60)  # 1 minute timeout per result
+                        log_with_timestamp(f"Progress: {completed_tasks}/{total_tasks} indices completed")
+                        sys.stdout.flush()
+                    except concurrent.futures.TimeoutError:
+                        log_with_timestamp(f"ERROR: Task {task_name} timed out")
+                        sys.stdout.flush()
+                    except Exception as e:
+                        log_with_timestamp(f"Failed: {task_name} - {str(e)}")
+                        sys.stdout.flush()
+            except concurrent.futures.TimeoutError:
+                log_with_timestamp("ERROR: Overall ingestion timed out after 30 minutes")
+                sys.stdout.flush()
+            
+            # Ensure executor properly shuts down
+            executor.shutdown(wait=True, timeout=30)
         
         # Signal all parallel ingestion completed
         log_with_timestamp(f"All parallel ingestion completed successfully ({completed_tasks}/{total_tasks} indices)")
