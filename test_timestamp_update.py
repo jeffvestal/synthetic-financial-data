@@ -14,11 +14,12 @@ os.environ['UPDATE_TIMESTAMPS_ON_LOAD'] = 'true'
 os.environ['PARALLEL_BULK_WORKERS'] = '1'
 os.environ['ES_BULK_BATCH_SIZE'] = '100'
 
-# Add the project to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the scripts directory to path
+scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
+sys.path.insert(0, scripts_dir)
 
 # Import after setting environment
-from scripts.common_utils import _read_and_chunk_from_file
+from common_utils import _read_and_chunk_from_file
 
 print("Testing timestamp update functionality...")
 print(f"Current time: {datetime.now().isoformat()}")
