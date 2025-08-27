@@ -225,6 +225,40 @@ Built-in presets for common scenarios:
 
 ## 📖 Usage
 
+### 🚀 Fast Loading Scripts (Recommended for Colab)
+
+For maximum performance in Google Colab or when loading existing data, use these optimized scripts that bypass control.py overhead:
+
+| Script | Purpose | Speed | Command |
+|--------|---------|-------|---------|
+| `load_all_data.py` | Load all 5 indices with optimal settings | ~20 seconds | `!python3 load_all_data.py` |
+| `load_specific_indices.py` | Load only specific indices | Varies | `!python3 load_specific_indices.py --holdings --news` |
+| `quick_reload.py` | Delete and reload indices (clean state) | Fast | `!python3 quick_reload.py --news --reports` |
+| `load_demo_subset.py` | Load subset for demos (5K holdings) | <5 seconds | `!python3 load_demo_subset.py` |
+| `load_fresh_data.py` | Load only recently generated files | Varies | `!python3 load_fresh_data.py --hours 2` |
+
+**Why use these instead of control.py?**
+- ⚡ **10-15x faster** (20 seconds vs several minutes)
+- 📊 **Real-time progress** with batch timestamps
+- 🎯 **Optimal settings** pre-configured (24 workers, 1000 batch size)
+- 🕐 **Timestamps always updated** to current time
+- 🚫 **No TaskExecutor overhead** that slows down control.py in Colab
+
+**Quick Examples:**
+```bash
+# Load everything (most common)
+!python3 load_all_data.py
+
+# Load just holdings and news
+!python3 load_specific_indices.py --holdings --news
+
+# Quick demo with subset
+!python3 load_demo_subset.py
+
+# Clean reload for testing
+!python3 quick_reload.py --all
+```
+
 ### What You Can Do Without Gemini API Key
 
 The following operations work without a Gemini API key:
@@ -319,14 +353,27 @@ os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
 # Check if indices are setup
 !python3 control.py --check-indices --non-interactive
 
-# Load existing data to Elasticsearch
-!python3 control.py --custom --elasticsearch --non-interactive
+# FAST Loading Scripts (10-15x faster than control.py)
+# These bypass control.py overhead for maximum speed (~20 seconds total)
 
-# Load data with updated timestamps (appears current)
+# Load all data with optimal settings (recommended)
+!python3 load_all_data.py
+
+# Load specific indices only
+!python3 load_specific_indices.py --holdings --news
+!python3 load_specific_indices.py --all
+
+# Quick reload for demos (deletes then reloads)
+!python3 quick_reload.py --news --reports
+
+# Load demo subset (5K holdings instead of 122K, <5 seconds)
+!python3 load_demo_subset.py
+
+# Load only recently generated files
+!python3 load_fresh_data.py --hours 2
+
+# Original control.py method (slower but more features)
 !python3 control.py --custom --elasticsearch --update-timestamps-on-load --non-interactive
-
-# Update existing ES data timestamps to now
-!python3 control.py --update-timestamps --non-interactive
 ```
 
 **Full Data Generation (Requires AI Key):**

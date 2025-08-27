@@ -79,14 +79,44 @@ synthetic-financial-data/
 
 ## Development Commands
 
+### 🚀 Fast Loading Scripts (Recommended for Google Colab)
+
+**NEW: Optimized loading scripts that are 10-15x faster than control.py:**
+
+```bash
+# Load all data in ~20 seconds (instead of several minutes)
+python3 load_all_data.py
+
+# Load specific indices only
+python3 load_specific_indices.py --holdings --news
+python3 load_specific_indices.py --all
+
+# Quick reload for demos (delete + reload)
+python3 quick_reload.py --news --reports
+
+# Load demo subset (5K holdings, <5 seconds)
+python3 load_demo_subset.py
+
+# Load only recently generated files
+python3 load_fresh_data.py --hours 2
+```
+
+**Why these are faster:**
+- Bypass TaskExecutor overhead that slows control.py in Colab
+- Direct ES connection without subprocess management
+- Optimal settings pre-configured (24 workers, 1000 batch)
+- Real-time progress with batch timestamps
+- Timestamps always updated to current time
+
 ### Operations Without Gemini API Key
 
 Many operations can be performed without a Gemini API key:
 
 **Available without Gemini key:**
-- `control.py --status` - Check system status
+- Fast loading scripts (all `load_*.py` scripts above)
+- `control.py --status` - Check system status (informational only, not required)
 - `control.py --check-indices` - Check Elasticsearch index status
-- `control.py --custom --elasticsearch` - Load existing data to ES
+- `control.py --custom --elasticsearch` - Load existing data to ES (slower, use load_all_data.py instead)
 - `control.py --update-timestamps` - Update ES document timestamps
 - `control.py --update-files` - Update data file timestamps
 - Interactive index management (option 5 in menu)
