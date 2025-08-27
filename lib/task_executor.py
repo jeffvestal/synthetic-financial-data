@@ -343,6 +343,8 @@ class TaskExecutor:
                 env['ES_BULK_BATCH_SIZE'] = str(config['bulk_size'])
             if 'max_parallel_indices' in config:
                 env['MAX_PARALLEL_INDICES'] = str(config['max_parallel_indices'])
+            if 'parallel_bulk_workers' in config:
+                env['PARALLEL_BULK_WORKERS'] = str(config['parallel_bulk_workers'])
             if 'timestamp_offset' in config:
                 env['TIMESTAMP_OFFSET'] = str(config['timestamp_offset'])
             if 'update_timestamps_on_load' in config:

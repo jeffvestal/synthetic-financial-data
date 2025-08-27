@@ -18,6 +18,8 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Generator
 import warnings
 from urllib3.exceptions import InsecureRequestWarning
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 # Add parent directory to path for lib imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -233,6 +235,24 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
     """
     current_chunk = []
     line_num = 0
+    
+    # Import TimestampUpdater once if needed (not for every document!)
+    timestamp_updater = None
+    doc_type = None
+    if update_timestamps:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib'))
+        from timestamp_updater import TimestampUpdater
+        timestamp_updater = TimestampUpdater
+        
+        # Infer doc type from index name once
+        doc_type_map = {
+            'financial_accounts': 'accounts',
+            'financial_holdings': 'holdings',
+            'financial_asset_details': 'asset_details',
+            'financial_news': 'news',
+            'financial_reports': 'reports'
+        }
+        doc_type = doc_type_map.get(index_name, 'unknown')
 
     try:
         with open(filepath, 'r') as f:
@@ -241,21 +261,8 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
                     doc = json.loads(line)
                     
                     # Update timestamps if requested
-                    if update_timestamps:
-                        # Import here to avoid circular dependency
-                        sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), 'lib'))
-                        from timestamp_updater import TimestampUpdater
-                        
-                        # Infer doc type from index name
-                        doc_type_map = {
-                            'financial_accounts': 'accounts',
-                            'financial_holdings': 'holdings',
-                            'financial_asset_details': 'asset_details',
-                            'financial_news': 'news',
-                            'financial_reports': 'reports'
-                        }
-                        doc_type = doc_type_map.get(index_name, 'unknown')
-                        doc = TimestampUpdater.update_document_timestamps(doc, doc_type, timestamp_offset)
+                    if update_timestamps and timestamp_updater:
+                        doc = timestamp_updater.update_document_timestamps(doc, doc_type, timestamp_offset)
                     
                     action = {
                         "_index": index_name,
@@ -288,7 +295,7 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
 def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, id_field_in_doc: str, 
                      batch_size: Optional[int] = None, timeout: Optional[int] = None, 
                      ensure_index: bool = True, update_timestamps: bool = False,
-                     timestamp_offset: int = 0) -> None:
+                     timestamp_offset: int = 0, parallel_bulk_workers: Optional[int] = None) -> None:
     """
     Ingest data from a JSONL file into Elasticsearch using the bulk API.
     
@@ -302,10 +309,12 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         ensure_index (bool): Whether to ensure index exists before ingestion
         update_timestamps (bool): Whether to update timestamps to current time
         timestamp_offset (int): Hours to offset timestamps from now
+        parallel_bulk_workers (int, optional): Number of parallel bulk workers (default 1)
     """
     # SIMPLE VERSION - Just print start/end, no complex progress tracking
     batch_size = batch_size or int(os.getenv('ES_BULK_BATCH_SIZE', ES_CONFIG['bulk_batch_size']))
     timeout = timeout or ES_CONFIG['request_timeout']
+    parallel_bulk_workers = parallel_bulk_workers or int(os.getenv('PARALLEL_BULK_WORKERS', '1'))
     
     # Check for timestamp settings from environment
     if not update_timestamps:
@@ -314,7 +323,7 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
     # Ultra-simple start message for Colab
-    print(f"Starting: {index_name}")
+    print(f"Starting: {index_name} (workers: {parallel_bulk_workers})")
     sys.stdout.flush()
     
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
@@ -329,29 +338,62 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
             pass  # Ignore errors, just continue
     
     try:
-        # SIMPLE BULK PROCESSING - No progress tracking
-        success_count = 0
-        total_count = 0
-        
         # Create document generator  
         doc_generator = _read_and_chunk_from_file(filepath, index_name, id_field_in_doc, batch_size, 
                                                 update_timestamps, timestamp_offset)
         
-        # Process all batches silently
-        for batch in _batch_documents(doc_generator, batch_size):
-            try:
-                batch_success, _ = helpers.bulk(
-                    es_client,
-                    batch,
-                    chunk_size=batch_size,
-                    request_timeout=timeout,
-                    raise_on_error=False
-                )
-                success_count += batch_success
-                total_count += len(batch)
-            except:
-                # Silent failure - just continue
-                pass
+        # Convert generator to list of batches for parallel processing
+        all_batches = list(_batch_documents(doc_generator, batch_size))
+        
+        if parallel_bulk_workers == 1:
+            # Original single-threaded processing
+            success_count = 0
+            total_count = 0
+            for batch in all_batches:
+                try:
+                    batch_success, _ = helpers.bulk(
+                        es_client,
+                        batch,
+                        chunk_size=batch_size,
+                        request_timeout=timeout,
+                        raise_on_error=False
+                    )
+                    success_count += batch_success
+                    total_count += len(batch)
+                except:
+                    pass
+        else:
+            # Parallel bulk processing
+            success_count = 0
+            total_count = 0
+            lock = threading.Lock()
+            
+            def process_batch(batch):
+                nonlocal success_count, total_count
+                try:
+                    batch_success, _ = helpers.bulk(
+                        es_client,
+                        batch,
+                        chunk_size=batch_size,
+                        request_timeout=timeout,
+                        raise_on_error=False
+                    )
+                    with lock:
+                        success_count += batch_success
+                        total_count += len(batch)
+                    return True
+                except:
+                    return False
+            
+            # Process batches in parallel
+            with ThreadPoolExecutor(max_workers=parallel_bulk_workers) as executor:
+                futures = [executor.submit(process_batch, batch) for batch in all_batches]
+                # Wait for all to complete
+                for future in as_completed(futures):
+                    try:
+                        future.result()
+                    except:
+                        pass
         
         # No completion message in Colab to avoid threading issues
         pass

@@ -368,7 +368,8 @@ class SyntheticDataController:
             'update_timestamps_on_load': args.update_timestamps_on_load if hasattr(args, 'update_timestamps_on_load') else False,
             'timestamp_offset': args.timestamp_offset if hasattr(args, 'timestamp_offset') else 0,
             'bulk_size': args.bulk_size if hasattr(args, 'bulk_size') else 100,
-            'max_parallel_indices': args.max_parallel_indices if hasattr(args, 'max_parallel_indices') else 3
+            'max_parallel_indices': args.max_parallel_indices if hasattr(args, 'max_parallel_indices') else 3,
+            'parallel_bulk_workers': args.parallel_bulk_workers if hasattr(args, 'parallel_bulk_workers') else 1
         }
         self._execute_generation(config)
 
@@ -429,6 +430,8 @@ Examples:
                        help="Elasticsearch bulk batch size (default: 100, increase for faster ingestion)")
     parser.add_argument("--max-parallel-indices", type=int, default=3,
                        help="Maximum number of indices to ingest in parallel (default: 3)")
+    parser.add_argument("--parallel-bulk-workers", type=int, default=1,
+                       help="Number of parallel workers for bulk indexing per index (default: 1)")
     
     return parser
 
