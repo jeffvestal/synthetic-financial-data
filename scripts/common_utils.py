@@ -355,12 +355,15 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         
         # Convert generator to list of batches for parallel processing
         all_batches = list(_batch_documents(doc_generator, batch_size))
+        total_batches = len(all_batches)
+        batch_counter = 0
         
         if parallel_bulk_workers == 1:
             # Original single-threaded processing
             success_count = 0
             total_count = 0
             for batch in all_batches:
+                batch_counter += 1
                 try:
                     batch_success, _ = helpers.bulk(
                         es_client,
@@ -371,16 +374,23 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
                     )
                     success_count += batch_success
                     total_count += len(batch)
+                    # Simple progress logging
+                    timestamp = datetime.now().strftime('%H:%M:%S')
+                    print(f"[{timestamp}] {index_name}: batch {batch_counter}/{total_batches} complete ({len(batch)} docs, {total_count} total)", 
+                          file=sys.stderr)
+                    sys.stderr.flush()
                 except:
                     pass
         else:
             # Parallel bulk processing
             success_count = 0
             total_count = 0
+            batch_counter = 0
             lock = threading.Lock()
             
-            def process_batch(batch):
-                nonlocal success_count, total_count
+            def process_batch(batch_info):
+                nonlocal success_count, total_count, batch_counter
+                batch_num, batch = batch_info
                 try:
                     batch_success, _ = helpers.bulk(
                         es_client,
@@ -392,13 +402,27 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
                     with lock:
                         success_count += batch_success
                         total_count += len(batch)
+                        batch_counter += 1
+                        # Simple progress logging (thread-safe)
+                        timestamp = datetime.now().strftime('%H:%M:%S')
+                        print(f"[{timestamp}] {index_name}: batch {batch_counter}/{total_batches} complete ({len(batch)} docs, {total_count} total)", 
+                              file=sys.stderr)
+                        sys.stderr.flush()
                     return True
-                except:
+                except Exception as e:
+                    with lock:
+                        batch_counter += 1
+                        timestamp = datetime.now().strftime('%H:%M:%S')
+                        print(f"[{timestamp}] {index_name}: batch {batch_counter}/{total_batches} FAILED", 
+                              file=sys.stderr)
+                        sys.stderr.flush()
                     return False
             
-            # Process batches in parallel
+            # Process batches in parallel with batch numbers
             with ThreadPoolExecutor(max_workers=parallel_bulk_workers) as executor:
-                futures = [executor.submit(process_batch, batch) for batch in all_batches]
+                # Create batch info tuples with batch numbers
+                batch_infos = [(i+1, batch) for i, batch in enumerate(all_batches)]
+                futures = [executor.submit(process_batch, batch_info) for batch_info in batch_infos]
                 # Wait for all to complete
                 for future in as_completed(futures):
                     try:
