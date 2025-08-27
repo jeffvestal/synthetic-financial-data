@@ -253,6 +253,11 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
             'financial_reports': 'reports'
         }
         doc_type = doc_type_map.get(index_name, 'unknown')
+        
+        # Debug: Show what timestamp will be used
+        sample_timestamp = timestamp_updater.calculate_target_timestamp(timestamp_offset)
+        print(f"  Updating timestamps to: {sample_timestamp}")
+        sys.stdout.flush()
 
     try:
         with open(filepath, 'r') as f:
@@ -323,7 +328,10 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
         timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
     # Ultra-simple start message for Colab
-    print(f"Starting: {index_name} (workers: {parallel_bulk_workers})")
+    if update_timestamps:
+        print(f"Starting: {index_name} (workers: {parallel_bulk_workers}, updating timestamps to current time)")
+    else:
+        print(f"Starting: {index_name} (workers: {parallel_bulk_workers})")
     sys.stdout.flush()
     
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
