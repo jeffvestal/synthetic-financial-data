@@ -254,10 +254,10 @@ def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str
         }
         doc_type = doc_type_map.get(index_name, 'unknown')
         
-        # Debug: Show what timestamp will be used
+        # Debug: Show what timestamp will be used (use stderr to bypass Colab suppression)
         sample_timestamp = timestamp_updater.calculate_target_timestamp(timestamp_offset)
-        print(f"  Updating timestamps to: {sample_timestamp}")
-        sys.stdout.flush()
+        print(f"  Updating timestamps to: {sample_timestamp}", file=sys.stderr)
+        sys.stderr.flush()
 
     try:
         with open(filepath, 'r') as f:
@@ -327,12 +327,15 @@ def ingest_data_to_es(es_client: Elasticsearch, filepath: str, index_name: str, 
     if timestamp_offset == 0:
         timestamp_offset = int(os.getenv('TIMESTAMP_OFFSET', '0'))
     
-    # Ultra-simple start message for Colab
+    # Start message - use both stdout and stderr to ensure visibility
     if update_timestamps:
-        print(f"Starting: {index_name} (workers: {parallel_bulk_workers}, updating timestamps to current time)")
+        msg = f"Starting: {index_name} (workers: {parallel_bulk_workers}, updating timestamps to current time)"
+        print(msg)
+        print(msg, file=sys.stderr)  # Also print to stderr for Colab
     else:
         print(f"Starting: {index_name} (workers: {parallel_bulk_workers})")
     sys.stdout.flush()
+    sys.stderr.flush()
     
     if not os.path.exists(filepath) or os.path.getsize(filepath) == 0:
         return  # Silent failure
