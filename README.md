@@ -1,899 +1,267 @@
 # Synthetic Financial Data Generator 🏦
 
-A powerful Python toolkit for generating realistic synthetic financial data for testing, demos, and development. Create thousands of accounts, holdings, news articles, and reports with AI-generated content, all ready for ingestion into Elasticsearch.
-
+Generate realistic financial datasets in seconds. Create accounts, holdings, news articles, and reports with AI-generated content, ready for Elasticsearch.
 
 ![Header Image](synthetic-financial-data-header.png "Synthetic Financial Data Generator")
 
-## 📋 Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Architecture](#architecture)
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Usage](#usage)
-- [Data Structure](#data-structure)
-- [API Documentation](#api-documentation)
-- [Examples](#examples)
-- [Troubleshooting](#troubleshooting)
-- [Contributing](#contributing)
-- [License](#license)
+## 🎯 What Is This?
 
-## 🎯 Overview
+A Python tool that creates realistic synthetic financial data for testing, demos, and development:
+- **Accounts**: Customer portfolios with risk profiles  
+- **Holdings**: Stock/ETF/bond positions with purchase history
+- **News**: AI-generated market articles with sentiment analysis
+- **Reports**: Company earnings and analyst notes
 
-The Synthetic Financial Data Generator creates realistic financial datasets including:
-- **Customer Accounts**: Personal and portfolio information with risk profiles
-- **Holdings**: Stock, ETF, and bond positions with purchase history
-- **Asset Details**: Current prices, sectors, and metadata for financial instruments
-- **News Articles**: AI-generated market news with sentiment analysis
-- **Financial Reports**: Company reports, earnings summaries, and analyst notes
+All data uses Google's Gemini AI for realistic content and loads into Elasticsearch with semantic search mappings.
 
-All data is generated using Google's Gemini AI for realistic content and can be automatically ingested into Elasticsearch with proper index mappings for semantic search capabilities.
+## 🚀 Quick Start
 
-## ✨ Features
+Get running in 30 seconds:
 
-### Core Capabilities
-- 🤖 **AI-Powered Generation**: Uses Gemini AI to create realistic financial content
-- 📊 **Comprehensive Data Types**: Accounts, holdings, assets, news, and reports
-- 🔍 **Elasticsearch Integration**: Automatic index creation with semantic search support
-- 🎮 **Interactive Control Panel**: User-friendly CLI with live progress tracking
-- 📈 **Scalable Generation**: Create datasets from 10 to 10,000+ records
-- 🎯 **Controlled Events**: Trigger specific market events for demo scenarios
-
-### Advanced Features
-- **Live Progress Dashboard**: Real-time status updates during generation
-- **Index Management**: Create, validate, and manage Elasticsearch indices
-- **Configuration Presets**: Save and load custom generation settings
-- **Batch Operations**: Queue multiple generation tasks
-- **Dry Run Mode**: Preview operations before execution
-- **Semantic Search Ready**: ELSER-compatible field mappings
-- **Timestamp Management**: Update document timestamps to current time or with custom offsets
-
-## 🏗️ Architecture
-
-```
-synthetic-financial-data/
-├── control.py                 # Main interactive control script
-├── requirements.txt           # Python dependencies
-├── scripts/                   # Core generation scripts
-│   ├── config.py             # Centralized configuration
-│   ├── generate_holdings_accounts.py
-│   ├── generate_reports_and_news_new.py
-│   ├── trigger_bad_news_event.py
-│   ├── common_utils.py       # Shared utilities
-│   ├── symbol_manager.py     # Symbol management
-│   └── symbols_config.py     # Stock/ETF/Bond definitions
-├── lib/                      # Control script libraries
-│   ├── menu_system.py        # Interactive menus
-│   ├── config_manager.py     # Configuration management
-│   ├── task_executor.py      # Task execution engine
-│   ├── index_manager.py      # Elasticsearch index management
-│   └── timestamp_updater.py  # Timestamp update operations
-├── elasticsearch/            # Elasticsearch configuration
-│   └── index_mappings.json   # Index mappings and settings
-├── prompts/                  # AI prompt templates
-│   ├── general_market_news.txt
-│   ├── specific_news.txt
-│   ├── specific_report.txt
-│   └── thematic_sector_report.txt
-└── generated_data/           # Output directory
-    ├── generated_accounts.jsonl
-    ├── generated_holdings.jsonl
-    ├── generated_asset_details.jsonl
-    ├── generated_news.jsonl
-    └── generated_reports.jsonl
-```
-
-## 🚀 Installation
-
-### Prerequisites
-- Python 3.8+
-- Elasticsearch 8.0+ (optional, for data ingestion)
-- Google Gemini API key
-
-### Option 1: Automated Setup (Recommended)
-Use the automated setup script that creates a virtual environment and installs all dependencies:
-
+### 1. Install
 ```bash
 git clone https://github.com/yourusername/synthetic-financial-data.git
 cd synthetic-financial-data
-python3 setup.py
-```
-
-The setup script will:
-- ✅ Create a virtual environment in `venv/`
-- ✅ Upgrade pip to the latest version
-- ✅ Install all required dependencies
-- ✅ Provide activation instructions
-
-After setup completes, activate the virtual environment:
-```bash
-# On macOS/Linux
-source venv/bin/activate
-
-# On Windows
-venv\Scripts\activate
-```
-
-### Option 2: Manual Installation
-
-### Step 1: Clone the Repository
-```bash
-git clone https://github.com/yourusername/synthetic-financial-data.git
-cd synthetic-financial-data
-```
-
-### Step 2: Create Virtual Environment (Optional but Recommended)
-```bash
-python3 -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-### Step 3: Install Dependencies
-```bash
 pip install -r requirements.txt
 ```
 
-Required packages:
-- `google-generativeai` - Gemini AI integration
-- `elasticsearch` - Elasticsearch client
-- `faker` - Synthetic name/address generation
-- `python-dotenv` - Environment variable management
-- `rich` - Interactive CLI interface
-- `tqdm` - Progress bars
-
-### Step 3: Set Environment Variables
-
-Create a `.env` file in the project root based on your use case:
-
-**For Loading Existing Data Only (No Generation):**
+### 2. Load Sample Data (20 seconds)
 ```bash
-# Elasticsearch credentials (required for data loading)
-ES_ENDPOINT_URL=https://localhost:9200
-ES_API_KEY=your_elasticsearch_api_key_here
-
-# Gemini API key NOT required for loading existing data
+# Load all existing data - accounts, holdings, news, reports
+python3 load_all_data.py
 ```
 
-**For Generating New Data:**
+### 3. Update Timestamps for Demo
 ```bash
-# Required for AI content generation
-GEMINI_API_KEY=your_gemini_api_key_here
+# Make data appear from 4 hours ago (perfect for demos)
+python3 update_es_timestamps.py --offset -4
 
-# Optional for Elasticsearch ingestion
-ES_ENDPOINT_URL=https://localhost:9200
-ES_API_KEY=your_elasticsearch_api_key_here
+# Or make it current
+python3 update_es_timestamps.py
 ```
 
-Or export them directly:
+### 4. Optional: Interactive Setup
 ```bash
-# For data loading only
-export ES_ENDPOINT_URL="https://localhost:9200"
-export ES_API_KEY="your_elasticsearch_api_key_here"
-
-# For new data generation (add this)
-export GEMINI_API_KEY="your_gemini_api_key_here"
-```
-
-**📝 API Key Requirements:**
-- **GEMINI_API_KEY**: Only needed for generating new data (accounts, news, reports, events)
-- **ES_API_KEY**: Only needed for Elasticsearch operations (loading data, managing indices)
-- **Neither key**: Required for checking existing local data files
-
-### Step 4: Verify Installation
-```bash
-python3 control.py --status
-```
-
-**Note**: Always remember to activate your virtual environment before working with the project:
-```bash
-source venv/bin/activate  # On macOS/Linux
-# or
-venv\Scripts\activate     # On Windows
-```
-
-## ⚙️ Configuration
-
-### Default Settings
-Configuration is centralized in `scripts/config.py`:
-
-```python
-# Generation volumes
-- 7,000 accounts
-- 10-25 holdings per account
-- 500+ news articles
-- 100+ financial reports
-
-# Elasticsearch settings
-- Batch size: 100 documents
-- Timeout: 60 seconds
-- Auto-create indices: Yes
-```
-
-### Custom Configuration
-Modify settings in `scripts/config.py` or use the interactive control panel:
-```bash
-python3 control.py
-# Select option 6: Configure Settings
-```
-
-### Presets
-Built-in presets for common scenarios:
-- **Small Demo**: 100 accounts, 50 articles (quick testing)
-- **Full Dataset**: 7,000 accounts, 500+ articles (production)
-- **Test Mode**: 10 accounts, 5 articles (development)
-
-## 📖 Usage
-
-### 🚀 Fast Loading Scripts (Recommended for Colab)
-
-For maximum performance in Google Colab or when loading existing data, use these optimized scripts that bypass control.py overhead:
-
-| Script | Purpose | Speed | Command |
-|--------|---------|-------|---------|
-| `load_all_data.py` | Load all 5 indices with optimal settings | ~20 seconds | `!python3 load_all_data.py` |
-| `load_specific_indices.py` | Load only specific indices | Varies | `!python3 load_specific_indices.py --holdings --news` |
-| `quick_reload.py` | Delete and reload indices (clean state) | Fast | `!python3 quick_reload.py --news --reports` |
-| `load_demo_subset.py` | Load subset for demos (5K holdings) | <5 seconds | `!python3 load_demo_subset.py` |
-| `load_fresh_data.py` | Load only recently generated files | Varies | `!python3 load_fresh_data.py --hours 2` |
-| `update_es_timestamps.py` | Update timestamps in ES without reloading | ~15 seconds | `!python3 update_es_timestamps.py` |
-
-**Why use these instead of control.py?**
-- ⚡ **10-15x faster** (20 seconds vs several minutes)
-- 📊 **Real-time progress** with batch timestamps
-- 🎯 **Optimal settings** pre-configured (24 workers, 1000 batch size)
-- 🕐 **Timestamps always updated** to current time
-- 🚫 **No TaskExecutor overhead** that slows down control.py in Colab
-
-**Quick Examples:**
-```bash
-# Load everything (most common)
-!python3 load_all_data.py
-
-# Load just holdings and news
-!python3 load_specific_indices.py --holdings --news
-
-# Quick demo with subset
-!python3 load_demo_subset.py
-
-# Clean reload for testing
-!python3 quick_reload.py --all
-```
-
-### What You Can Do Without Gemini API Key
-
-The following operations work without a Gemini API key:
-- ✅ Load existing data files to Elasticsearch
-- ✅ Check system status and configuration
-- ✅ Manage Elasticsearch indices
-- ✅ View and analyze existing generated data
-- ✅ Check index status with `--check-indices`
-- ✅ Update timestamps in Elasticsearch documents
-- ✅ Update timestamps in data files before loading
-
-Operations that require Gemini API key:
-- ❌ Generate new accounts and holdings
-- ❌ Generate new news articles
-- ❌ Generate new financial reports
-- ❌ Trigger market events (bad news, crash, volatility)
-
-### Interactive Mode (Recommended)
-
-Launch the interactive control panel:
-```bash
+# Full control panel with menus and configuration
 python3 control.py
 ```
 
-Menu options:
-1. **🚀 Quick Start** - Generate all data with defaults
-2. **⚙️ Custom Generation** - Configure specific options
-3. **💥 Trigger Events** - Create controlled market events
-4. **📊 Check Status** - View system and data status
-5. **🗄️ Manage Indices** - Elasticsearch index management
-6. **🔧 Configure Settings** - Manage configuration
-7. **🔍 Dry Run Mode** - Preview without executing
-8. **🚪 Exit** - Exit the application
+**That's it!** You now have realistic financial data in Elasticsearch ready for queries, dashboards, and demos.
 
-### Command Line Mode
+## 💡 Common Use Cases
 
-Quick generation with defaults:
+### Load Existing Data (No AI Key Needed)
+Most common scenario - you have the generated data files and want them in Elasticsearch:
+
 ```bash
+# Load everything (recommended)
+python3 load_all_data.py
+
+# Load specific indices only  
+python3 load_specific_indices.py --holdings --news
+
+# Quick demo subset (5K holdings instead of 122K)
+python3 load_demo_subset.py
+
+# Reload for clean state (delete + reload)  
+python3 quick_reload.py --all
+```
+
+### Generate New Data (Requires Gemini API Key)
+Set your API key first:
+```bash
+export GEMINI_API_KEY="your_key_here"
+```
+
+Then generate:
+```bash
+# Generate everything with defaults (7K accounts, 500+ articles)
 python3 control.py --quick-start
+
+# Custom generation with specific volumes
+python3 control.py --custom --accounts --num-accounts 1000
 ```
 
-Custom generation:
+### Demo Scenarios
 ```bash
-# Generate 100 accounts and 50 news articles
-python3 control.py --custom --accounts --news \
-  --num-accounts 100 --num-news 50
+# Create market crash scenario
+python3 control.py --trigger-event market_crash
 
-# Trigger a bad news event
-python3 control.py --trigger-event bad_news
-
-# Check full system status
-python3 control.py --status
-
-# Check only Elasticsearch index status
-python3 control.py --check-indices
-
-# Update all ES document timestamps to current time
-python3 control.py --update-timestamps
-
-# Update timestamps to 24 hours ago (for historical testing)
-python3 control.py --update-timestamps --timestamp-offset -24
-
-# Update timestamps in data files before loading
-python3 control.py --update-files --timestamp-offset -12
-
-# Load existing data with timestamps updated to current time
-python3 control.py --custom --elasticsearch --update-timestamps-on-load
-```
-
-### Jupyter Notebook & Google Colab Usage
-
-The system automatically detects notebook environments and runs in non-interactive mode to prevent blocking on prompts. For explicit control, use the `--non-interactive` flag:
-
-**Key Compatibility Features:**
-- 🔍 **Automatic Detection**: Detects Colab/Jupyter environments automatically
-- 🚫 **No Blocking Prompts**: Skips all interactive prompts that would hang notebook cells
-- 📝 **Complete Error Messages**: Shows full error details (no truncation)
-- ⚙️ **Explicit Control**: Use `--non-interactive` flag for guaranteed non-interactive mode
-
-For programmatic usage in Jupyter notebooks or Google Colab:
-
-**Data Loading Only (No AI Key Required):**
-```python
-# Set Elasticsearch credentials
-import os
-os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
-os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
-
-# Check system status (automatically non-interactive in notebooks)
-!python3 control.py --status
-
-# Check if indices are setup
-!python3 control.py --check-indices --non-interactive
-
-# FAST Loading Scripts (10-15x faster than control.py)
-# These bypass control.py overhead for maximum speed (~20 seconds total)
-
-# Load all data with optimal settings (recommended)
-!python3 load_all_data.py
-
-# Load specific indices only
-!python3 load_specific_indices.py --holdings --news
-!python3 load_specific_indices.py --all
-
-# Quick reload for demos (deletes then reloads)
-!python3 quick_reload.py --news --reports
-
-# Load demo subset (5K holdings instead of 122K, <5 seconds)
-!python3 load_demo_subset.py
-
-# Load only recently generated files
-!python3 load_fresh_data.py --hours 2
-
-# Original control.py method (slower but more features)
-!python3 control.py --custom --elasticsearch --update-timestamps-on-load --non-interactive
-```
-
-**Full Data Generation (Requires AI Key):**
-```python
-# Set all credentials
-import os
-os.environ['GEMINI_API_KEY'] = 'your_gemini_api_key_here'
-os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
-os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
-
-# Generate new data (automatically non-interactive in notebooks)
-!python3 control.py --quick-start
-
-# Force non-interactive mode explicitly
-!python3 control.py --quick-start --non-interactive
-
-# Or trigger specific events
-!python3 control.py --trigger-event market_crash
-```
-
-**Quick Reference - Common Colab/Jupyter Commands:**
-
-```python
-# FIRST: Check what data files you have and environment status
-!python3 control.py --status
-
-# THEN: Set Elasticsearch credentials if you want to load data to ES
-import os
-os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'
-os.environ['ES_API_KEY'] = 'your_elasticsearch_api_key_here'
-
-# Load all existing data types with current timestamps (most common)
-!python3 control.py --custom --accounts --news --reports --elasticsearch --update-timestamps-on-load
-
-# Load only specific data types with fresh timestamps  
-!python3 control.py --custom --news --reports --elasticsearch --update-timestamps-on-load
-
-# Generate everything fresh (requires GEMINI_API_KEY)
-!python3 control.py --quick-start
-
-# Generate specific types with custom volumes (requires GEMINI_API_KEY)
-!python3 control.py --custom --accounts --news --reports --elasticsearch --num-accounts 100
-
-# Update existing Elasticsearch data timestamps to now
-!python3 control.py --update-timestamps
-```
-
-> **💡 Key Tips**: 
-> - Always run `!python3 control.py --status` first to see what data files exist
-> - `--custom` requires explicit data type flags (`--accounts`, `--news`, `--reports`)  
-> - `--elasticsearch` flag requires `ES_API_KEY` environment variable
-> - Loading data requires the data files to exist in `generated_data/` directory
-
-### Direct Script Execution
-
-Run individual generation scripts:
-```bash
-# Generate accounts and holdings
-python3 scripts/generate_holdings_accounts.py
-
-# Generate news and reports
-python3 scripts/generate_reports_and_news_new.py
-
-# Trigger controlled events with different types
-python3 scripts/trigger_bad_news_event.py --event-type bad_news
-python3 scripts/trigger_bad_news_event.py --event-type market_crash
-python3 scripts/trigger_bad_news_event.py --event-type volatility
-```
-
-### Elasticsearch Index Management
-
-The system automatically creates indices with proper mappings before data ingestion.
-
-**Quick Index Status Check:**
-```bash
-# Check only index status (no other system checks)
-python3 control.py --check-indices
-```
-
-This command provides a focused view of your Elasticsearch indices:
-- ✅ Connection to Elasticsearch cluster
-- 📊 Status of all 5 financial indices  
-- 📈 Document counts and sizes
-- 🔍 Summary statistics
-
-Example output:
-```
-📊 Index Status Summary
-┌─────────────────────────┬────────┬──────────┬──────────┐
-│ Index Name              │ Exists │ Documents│ Size     │
-├─────────────────────────┼────────┼──────────┼──────────┤
-│ financial_accounts      │ ✓      │ 7,000    │ 2.1 MB   │
-│ financial_holdings      │ ✓      │ 87,234   │ 15.3 MB  │
-│ financial_asset_details │ ✓      │ 127      │ 45 KB    │
-│ financial_news          │ ✓      │ 523      │ 890 KB   │
-│ financial_reports       │ ✓      │ 108      │ 234 KB   │
-└─────────────────────────┴────────┴──────────┴──────────┘
-
-✓ All 5 indices are properly configured
-Total: 94,992 documents, 18.5 MB
-```
-
-**Full Index Management:**
-
-To manage indices interactively:
-
-```bash
-python3 control.py
-# Select option 5: Manage Indices
-```
-
-Options include:
-- Check index status
-- Create missing indices
-- Recreate all indices
-- Delete specific index
-- View index mappings
-
-### Timestamp Management
-
-The system provides comprehensive timestamp management to keep your synthetic data current for demos and testing.
-
-**🚀 Fast Timestamp Updates (Recommended):**
-```bash
-# Update all ES timestamps to current time (no data reloading)
+# Make old data appear fresh
 python3 update_es_timestamps.py
 
-# Set timestamps to 24 hours ago
-python3 update_es_timestamps.py --offset -24
-
-# Set timestamps to 3 hours in the future
-python3 update_es_timestamps.py --offset 3
-
-# Update only specific indices
-python3 update_es_timestamps.py --indices news reports --offset -1
-
-# Preview changes without updating (dry run)
-python3 update_es_timestamps.py --dry-run
+# Time-sequence data (news yesterday, reports today)
+python3 update_es_timestamps.py --indices news --offset -24
+python3 update_es_timestamps.py --indices reports --offset 0
 ```
 
-**Alternative: Update via control.py (slower):**
-```bash
-# Update all document timestamps to current time
-python3 control.py --update-timestamps
-
-# Set timestamps to 24 hours ago (useful for historical testing)
-python3 control.py --update-timestamps --timestamp-offset -24
-
-# Set timestamps to 1 week in the future
-python3 control.py --update-timestamps --timestamp-offset 168
-```
-
-**Update Data Files Before Loading:**
-```bash
-# Update file timestamps before loading to ES
-python3 control.py --update-files --timestamp-offset -12
-
-# Load data with timestamps updated during ingestion
-python3 control.py --custom --elasticsearch --update-timestamps-on-load
-
-# Load with specific timestamp offset
-python3 control.py --custom --elasticsearch --update-timestamps-on-load --timestamp-offset 72
-```
-
-**Timestamp Fields Updated by Data Type:**
-- **Accounts**: `last_updated`
-- **Holdings**: `last_updated`, `purchase_date`
-- **Asset Details**: `last_updated`, `current_price.last_updated`
-- **News Articles**: `last_updated`, `published_date`
-- **Reports**: `last_updated`, `published_date`
-
-**Common Use Cases:**
-- **Demo Preparation**: Make old data appear current for presentations
-- **Testing**: Create data with specific timestamps for time-based features
-- **Development**: Keep synthetic datasets fresh without regenerating content
-
-## 📊 Data Structure
-
-### Account Data
-```json
-{
-  "account_id": "ACC00001-a1b2",
-  "account_holder_name": "John Smith",
-  "first_name": "John",
-  "last_name": "Smith",
-  "state": "CA",
-  "zip_code": "94105",
-  "account_type": "Growth",
-  "risk_profile": "Medium",
-  "contact_preference": "email",
-  "total_portfolio_value": 125000.50,
-  "last_updated": "2024-01-15T10:30:00"
-}
-```
-
-### Holdings Data
-```json
-{
-  "holding_id": "HLD-12345-6789",
-  "account_id": "ACC00001-a1b2",
-  "symbol": "AAPL",
-  "quantity": 50,
-  "purchase_price": 150.25,
-  "purchase_date": "2023-06-15",
-  "is_high_value": true,
-  "last_updated": "2024-01-15T10:30:00"
-}
-```
-
-### News Article
-```json
-{
-  "article_id": "NEWS-abc123",
-  "title": "Tech Stocks Rally on Strong Earnings",
-  "content": "Technology stocks surged today...",
-  "source": "Financial Times",
-  "published_date": "2024-01-15T09:00:00",
-  "url": "https://example.com/article",
-  "entities": ["AAPL", "MSFT", "GOOGL"],
-  "sentiment": "positive",
-  "company_symbol": "AAPL",
-  "primary_symbol": "AAPL",
-  "last_updated": "2024-01-15T10:30:00"
-}
-```
-
-## 🔌 API Documentation
-
-### Core Modules
-
-#### `control.py`
-Main entry point for interactive and command-line usage.
-
+### Jupyter Notebook / Google Colab
 ```python
-# Interactive mode
+# Set credentials
+import os
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'  
+os.environ['ES_API_KEY'] = 'your_elasticsearch_key'
+
+# Load data (works without Gemini key)
+!python3 load_all_data.py
+
+# Generate new data (requires Gemini key)
+os.environ['GEMINI_API_KEY'] = 'your_gemini_key'
+!python3 control.py --quick-start --non-interactive
+```
+
+## ✨ What Else Can It Do?
+
+### Data Types
+- **7,000+ Accounts**: Personal info, portfolios, risk profiles
+- **70K-175K Holdings**: Stock/ETF/bond positions with realistic values
+- **100+ Assets**: Current prices, sectors, index memberships  
+- **500+ News Articles**: AI-generated market news with sentiment
+- **100+ Reports**: Earnings summaries and analyst notes
+
+### Smart Features
+- **10-15x Faster Loading**: Direct scripts bypass control.py overhead
+- **Real-time Progress**: Live docs/sec rates and progress bars  
+- **Semantic Search Ready**: ELSER-compatible field mappings
+- **Market Events**: Trigger crashes, volatility, bad news scenarios
+- **Timestamp Management**: Make historical data appear current
+- **Index Management**: Auto-create, validate, recreate Elasticsearch indices
+
+### Generation Control
+```bash
+# Interactive control panel
 python3 control.py
 
-# Command-line arguments
---quick-start         # Run with defaults
---custom             # Custom generation
---accounts           # Generate accounts
---news               # Generate news
---reports            # Generate reports
---num-accounts N     # Number of accounts
---num-news N         # Number of news articles
---trigger-event TYPE # Trigger event (bad_news, market_crash, volatility)
---status            # Show full system status
---check-indices     # Show ES index status only
---update-timestamps # Update ES document timestamps to now
---update-files      # Update file timestamps before loading
---update-timestamps-on-load  # Update timestamps during data loading
---timestamp-offset N # Hours offset from now (+ future, - past)
+# Menu options:
+# 1. Quick Start - Generate everything 
+# 2. Custom Generation - Pick data types and volumes
+# 3. Trigger Events - Market crashes, bad news, volatility
+# 4. Check Status - System health and data statistics  
+# 5. Manage Indices - Elasticsearch index operations
+# 6. Configure Settings - API keys, presets, advanced options
 ```
 
-#### `lib/index_manager.py`
-Manages Elasticsearch indices.
+### Performance
+- **Direct Loading**: ~20 seconds for full dataset
+- **Control.py Loading**: Several minutes (use for configuration only)
+- **Timestamp Updates**: ~100K docs/sec using in-place ES updates
+- **Optimized Settings**: 24 workers, 1000 batch size pre-configured
 
+## ⚙️ Setup & Configuration
+
+### API Keys
+```bash
+# Required for generating new data
+export GEMINI_API_KEY="your_google_gemini_key"
+
+# Required for Elasticsearch operations  
+export ES_ENDPOINT_URL="https://localhost:9200"
+export ES_API_KEY="your_elasticsearch_key" 
+
+# Or create .env file
+echo "GEMINI_API_KEY=your_key" >> .env
+echo "ES_API_KEY=your_es_key" >> .env
+```
+
+### What Needs What?
+| Task | Gemini Key | ES Key | 
+|------|------------|---------|
+| Load existing data | ❌ | ✅ |
+| Generate new data | ✅ | Optional |
+| Update timestamps | ❌ | ✅ |
+| Check status | ❌ | ❌ |
+
+### Quick Troubleshooting
+
+**Slow loading?** Use direct scripts instead of control.py:
+```bash
+# SLOW (several minutes)
+python3 control.py --custom --elasticsearch
+
+# FAST (20 seconds)  
+python3 load_all_data.py
+```
+
+**Connection issues?** Test your setup:
+```bash
+# Check ES connection
+python3 control.py --check-indices
+
+# Check system status
+python3 control.py --status
+```
+
+**Missing API key?** Many operations work without keys:
+```bash
+# These work without any API keys
+python3 load_all_data.py           # Load existing data
+python3 update_es_timestamps.py    # Update timestamps  
+python3 control.py --status        # Check status
+```
+
+## 🔧 Advanced
+
+<details>
+<summary>Click to expand advanced topics</summary>
+
+### Architecture
+```
+synthetic-financial-data/
+├── control.py                 # Interactive control script
+├── load_all_data.py          # Fast data loader (recommended)
+├── update_es_timestamps.py   # Fast timestamp updater
+├── requirements.txt          # Dependencies
+├── scripts/                  # Core generation scripts
+├── lib/                      # Control panel libraries
+├── elasticsearch/            # Index mappings
+├── prompts/                  # AI prompt templates
+└── generated_data/           # Output files (JSONL)
+```
+
+### Performance Optimization
+- **TaskExecutor Overhead**: control.py has 10-15x subprocess overhead in Colab/Jupyter
+- **Optimal Settings**: 24 workers, 1000 batch size for maximum throughput
+- **Direct Scripts**: Always faster than control.py for data operations
+- **Bottleneck**: TaskExecutor subprocess management, not Elasticsearch speed
+
+### API Reference
 ```python
-from lib.index_manager import IndexManager, ensure_indices_exist
+from scripts.common_utils import create_elasticsearch_client, ingest_data_to_es
+from lib.index_manager import IndexManager
 
-# Create manager
+# Direct data loading
+es_client = create_elasticsearch_client()  
+ingest_data_to_es(es_client, 'file.jsonl', 'index_name', 'id_field')
+
+# Index management
 manager = IndexManager(es_client)
-
-# Ensure indices exist
-ensure_indices_exist(es_client, ['financial_accounts', 'financial_holdings'])
-
-# Check if index exists
-exists = manager.index_exists('financial_accounts')
-
-# Create index with mapping
-manager.create_index('financial_accounts')
-
-# Get index status
-status = manager.get_index_status('financial_accounts')
+manager.get_index_status('financial_accounts')
 ```
 
-#### `scripts/common_utils.py`
-Shared utilities for all scripts.
-
-```python
-from common_utils import (
-    configure_gemini,
-    call_gemini_api,
-    create_elasticsearch_client,
-    ingest_data_to_es
-)
-
-# Configure Gemini
-model = configure_gemini()
-
-# Call AI API
-response = call_gemini_api(prompt, model)
-
-# Create ES client
-es_client = create_elasticsearch_client()
-
-# Ingest data (auto-creates index)
-ingest_data_to_es(es_client, filepath, index_name, id_field)
-```
-
-#### `lib/timestamp_updater.py`
-Manages timestamp updates for financial data.
-
-```python
-from lib.timestamp_updater import TimestampUpdater
-
-# Update all ES indices to current time
-results = TimestampUpdater.update_all_indices(es_client, offset_hours=0)
-
-# Update specific index with 24-hour offset
-result = TimestampUpdater.update_elasticsearch_index(
-    es_client, 'financial_news', offset_hours=-24
-)
-
-# Update document timestamps in-flight (during loading)
-updated_doc = TimestampUpdater.update_document_timestamps(
-    document, doc_type='news', offset_hours=12
-)
-
-# Update JSONL file timestamps
-count = TimestampUpdater.update_file_timestamps(
-    'generated_data/generated_news.jsonl', 
-    doc_type='news', 
-    offset_hours=-48
-)
-
-# Calculate target timestamp with offset
-timestamp = TimestampUpdater.calculate_target_timestamp(offset_hours=-24)
-```
-
-## 💡 Examples
-
-### Example 1: Quick Demo Dataset
-Generate a small dataset for testing:
-```bash
-python3 control.py
-# Select 2: Custom Generation
-# Accounts: 100
-# News: 50
-# Reports: 20
-# Elasticsearch: No
-```
-
-### Example 2: Load Existing Data with Current Timestamps
-Load pre-generated data to Elasticsearch with fresh timestamps (most common use case):
-```bash
-# Load all existing data files with timestamps updated to now
-python3 control.py --custom --accounts --news --reports --elasticsearch --update-timestamps-on-load
-```
-This will:
-- Load all existing JSONL files to Elasticsearch (accounts, holdings, news, reports)
-- Update all timestamps (published_date, last_updated, etc.) to current time
-- Make data appear freshly generated for demos
-- No Gemini API key required
-
-**Note**: The `--custom` flag requires specifying data types (`--accounts`, `--news`, `--reports`). Without these flags, you'll see "No tasks to execute".
-
-### Example 3: Full Production Dataset
-Generate complete dataset with Elasticsearch:
-```bash
-python3 control.py --quick-start
-```
-This creates:
-- 7,000 accounts
-- 70,000-175,000 holdings
-- 500+ news articles  
-- 100+ reports
-- All ingested to Elasticsearch
-
-### Example 4: Trigger Market Event
-Create a controlled bad news event:
-```bash
-python3 control.py --trigger-event bad_news
-```
-Generates:
-- 5 negative news articles for TSLA
-- 2 negative reports for FCX
-- General market volatility articles
-
-### Example 5: Demo Data Freshness
-Update existing data to appear current for a live demo:
-```bash
-# Load existing data with current timestamps
-python3 control.py --custom --elasticsearch --update-timestamps-on-load
-
-# Or update already-loaded ES data to appear current
-python3 control.py --update-timestamps
-
-# FAST: Direct timestamp update (recommended - 10x faster)
-python3 update_es_timestamps.py                    # Update all to current time
-python3 update_es_timestamps.py --offset -24       # 24 hours ago
-python3 update_es_timestamps.py --indices news reports  # Specific indices only
-
-# Create a time-sequenced demo (news from yesterday, reports from today)
-python3 control.py --update-timestamps --timestamp-offset -24  # News 24h ago
-# Then manually update reports to current time via interactive menu
-```
-
-### Example 6: Custom Symbol Focus
-Modify `scripts/symbols_config.py` to focus on specific stocks:
+### Custom Symbol Configuration
+Edit `scripts/symbols_config.py`:
 ```python
 STOCK_SYMBOLS_AND_INFO = {
-    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology', ...},
-    'MSFT': {'name': 'Microsoft Corp.', 'sector': 'Technology', ...},
+    'AAPL': {'name': 'Apple Inc.', 'sector': 'Technology'},
+    'MSFT': {'name': 'Microsoft Corp.', 'sector': 'Technology'},
     # Add your symbols here
 }
 ```
 
-## 🔧 Troubleshooting
+### Elasticsearch Index Mappings
+All indices auto-created with proper mappings from `elasticsearch/index_mappings.json`:
+- **Semantic search fields** for titles and content
+- **Lookup mode** for optimized storage
+- **Proper field types** (keyword, text, date, float)
 
-### Common Issues
-
-#### 1. Gemini API Key Error
-```
-ERROR: GEMINI_API_KEY environment variable not set
-```
-**Solution**: Set the environment variable or add to `.env` file
-
-#### 2. Elasticsearch Connection Failed
-```
-ERROR: Could not connect to Elasticsearch
-```
-**Solution**: 
-- Verify Elasticsearch is running
-- Check ES_ENDPOINT_URL and ES_API_KEY
-- Ensure network connectivity
-
-#### 3. Index Creation Failed
-```
-Error creating index 'financial_accounts': resource_already_exists_exception
-```
-**Solution**: Index already exists. Use index management to recreate if needed.
-
-#### 3.5. Task Fails with "Process failed with no error details"
-**Problem**: Command like `--custom --accounts --news --reports --elasticsearch` fails even though data files exist.
-**Cause**: Missing Elasticsearch credentials (`ES_API_KEY` not set).
-**Solution**: 
-1. Check status first: `python3 control.py --status`
-2. Set ES credentials: 
-   ```python
-   import os
-   os.environ['ES_API_KEY'] = 'your_key_here'
-   ```
-3. Or remove `--elasticsearch` flag to skip ES loading
-
-#### 4. Import Errors
-```
-ModuleNotFoundError: No module named 'rich'
-```
-**Solution**: Install dependencies:
-```bash
-pip install -r requirements.txt
-```
-
-### Google Colab / Jupyter Notebook Issues
-
-#### 5. Cell Hangs on "Press Enter to continue..."
-**Problem**: Command gets stuck waiting for user input in notebook environments.
-**Solution**: The system now automatically detects notebook environments and skips prompts. For older versions or explicit control:
-```python
-# Use the --non-interactive flag
-!python3 control.py --status --non-interactive
-```
-
-#### 6. ModuleNotFoundError: No module named 'menu_system'
-**Problem**: Missing lib/ directory in GitHub repository.
-**Solution**: Ensure you're using the latest version where this issue is fixed. If still experiencing issues:
-```python
-# Check if lib directory exists
-!ls -la lib/
-# If missing, ensure you've cloned the complete repository
-```
-
-#### 7. Truncated Error Messages
-**Problem**: Seeing "Error: ..." instead of complete error details.
-**Solution**: This has been fixed in recent versions. Update to latest version for complete error messages.
-
-### Debug Mode
-Enable verbose logging by modifying `scripts/config.py`:
-```python
-DEBUG_SETTINGS = {
-    'log_level': 'DEBUG',
-    'verbose_api_calls': True
-}
-```
+</details>
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please follow these steps:
+We welcome contributions! Please see our contributing guidelines and feel free to submit issues or pull requests.
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-### Development Guidelines
-- Follow PEP 8 style guide
-- Add docstrings to all functions
-- Update tests for new features
-- Update documentation as needed
+For support, report issues at: https://github.com/anthropics/claude-code/issues
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- Google Gemini AI for content generation
-- Elasticsearch for data storage and search
-- The Python community for excellent libraries
-
-## 📞 Support
-
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Check existing documentation in `CLAUDE.md`
-- Review troubleshooting section above
-
----
-
-Built with ❤️ for the financial data community
+This project is licensed under the MIT License - see the LICENSE file for details.
