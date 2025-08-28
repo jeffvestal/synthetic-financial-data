@@ -9,7 +9,13 @@ import os
 import sys
 import time
 import argparse
+import warnings
 from datetime import datetime, timedelta
+
+# Suppress SSL and deprecation warnings
+warnings.filterwarnings('ignore')
+import urllib3
+urllib3.disable_warnings()
 
 # Add scripts and lib to path
 scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
@@ -73,27 +79,26 @@ def update_index_timestamps(es_client, index_name, offset_hours=0, dry_run=False
         else:
             script_lines.append(f"ctx._source.{field} = params.timestamp;")
     
-    update_body = {
-        "script": {
-            "source": " ".join(script_lines),
-            "params": {
-                "timestamp": target_timestamp
-            }
-        }
-    }
-    
-    # Execute update
+    # Execute update using the new API format
     print(f"     ⏳ Updating...", end='', flush=True)
     start_time = time.time()
     
     try:
-        response = es_client.update_by_query(
+        # Use the options() method for transport options (new API)
+        response = es_client.options(
+            request_timeout=300,  # 5 minute timeout for large indices
+            ignore_status=[409]   # Ignore version conflicts
+        ).update_by_query(
             index=index_name,
-            body=update_body,
+            script={
+                "source": " ".join(script_lines),
+                "params": {
+                    "timestamp": target_timestamp
+                }
+            },
             refresh=True,  # Make changes immediately searchable
             conflicts='proceed',  # Continue on version conflicts
-            wait_for_completion=True,
-            request_timeout=300  # 5 minute timeout for large indices
+            wait_for_completion=True
         )
         
         elapsed = time.time() - start_time

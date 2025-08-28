@@ -19,6 +19,12 @@ All content is generated using Google's Gemini AI for realistic language and can
 ```
 synthetic-financial-data/
 ├── control.py                     # 🎮 Main interactive control script
+├── update_es_timestamps.py        # ⚡ Fast ES timestamp updater (10x faster)
+├── load_all_data.py              # 🚀 Fast data loader (bypasses control.py)
+├── load_specific_indices.py       # 🎯 Selective data loader
+├── load_demo_subset.py           # 🎭 Demo subset loader (5K holdings)
+├── load_fresh_data.py            # 🆕 Recent data loader
+├── quick_reload.py               # 🔄 Quick reload (delete + load)
 ├── requirements.txt               # Python dependencies
 ├── README.md                     # Comprehensive documentation
 ├── .gitignore                    # Git ignore rules (protects secrets & large files)
@@ -107,6 +113,48 @@ python3 load_fresh_data.py --hours 2
 - Optimal settings pre-configured (24 workers, 1000 batch)
 - Real-time progress with batch timestamps
 - Timestamps always updated to current time
+
+### ⚡ Fast Timestamp Updates
+
+**NEW: Direct ES timestamp updater - 10x faster than control.py method:**
+
+```bash
+# Update all ES document timestamps to current time
+python3 update_es_timestamps.py
+
+# Set timestamps to 24 hours ago for historical demos
+python3 update_es_timestamps.py --offset -24
+
+# Set timestamps to 3 hours in the future
+python3 update_es_timestamps.py --offset 3
+
+# Update specific indices only
+python3 update_es_timestamps.py --indices accounts holdings
+python3 update_es_timestamps.py --indices news reports
+
+# Dry run to preview changes without updating
+python3 update_es_timestamps.py --dry-run --offset -168
+```
+
+**Performance Benefits:**
+- **10x Faster**: ~100k docs/sec vs ~10k docs/sec with control.py
+- **In-Place Updates**: Uses ES update_by_query API - no data reloading
+- **Memory Efficient**: Processes documents in ES without downloading
+- **Conflict Handling**: Continues on version conflicts
+- **Real-time Progress**: Live progress tracking with docs/sec rates
+
+**Timestamp Fields Updated:**
+- `financial_accounts`: `last_updated`
+- `financial_holdings`: `last_updated`, `purchase_date`
+- `financial_asset_details`: `last_updated`, `current_price.last_updated`
+- `financial_news`: `last_updated`, `published_date`
+- `financial_reports`: `last_updated`, `published_date`
+
+**Use Cases:**
+- **Demo Preparation**: Make historical data appear current instantly
+- **Time Simulation**: Create realistic time sequences for testing
+- **Data Refresh**: Keep datasets current without regenerating content
+- **Performance Testing**: Quick timestamp updates for load testing
 
 ### Operations Without Gemini API Key
 
@@ -436,6 +484,92 @@ count = TimestampUpdater.update_file_timestamps(
 - **Conflict Handling**: Updates proceed even if some documents fail (conflicts='proceed')
 - **Memory Efficient**: File updates process line-by-line without loading entire datasets
 
+## 🚀 Performance Optimization
+
+### Understanding Performance Bottlenecks
+
+**Key Discovery**: The primary performance bottleneck is **TaskExecutor subprocess overhead**, not Elasticsearch indexing speed or timestamp operations.
+
+**Performance Comparison:**
+- **Direct Scripts**: ~20 seconds total (load_all_data.py)
+- **Control.py**: Several minutes (10-15x slower due to subprocess management)
+- **Root Cause**: TaskExecutor creates subprocess overhead in environments like Google Colab/Jupyter
+
+### Optimization Strategies
+
+**1. Use Direct Loading Scripts (Recommended)**
+```bash
+# FAST: Direct connection (20 seconds)
+python3 load_all_data.py
+
+# SLOW: Via control.py (several minutes)
+python3 control.py --custom --elasticsearch
+```
+
+**2. Optimal Elasticsearch Settings**
+Based on performance testing, optimal settings are:
+- **Batch Size**: 1000 documents per batch
+- **Parallel Workers**: 24 workers (for most systems)
+- **Connection**: Direct ES client without subprocess overhead
+
+**3. Environment-Specific Optimizations**
+
+**Google Colab/Jupyter:**
+- Always use direct scripts (`load_*.py`, `update_es_timestamps.py`)
+- Avoid control.py for data operations
+- Use `--non-interactive` flag if using control.py
+
+**Local Development:**
+- Direct scripts still faster but control.py more manageable
+- Interactive features work properly
+- Full menu system available
+
+**Production/Automation:**
+- Direct scripts for maximum throughput
+- Batch operations with optimal worker counts
+- Environment variable configuration
+
+### Performance Diagnostic Tools
+
+**1. Indexing Performance Diagnosis:**
+```bash
+# Identify indexing bottlenecks
+python3 diagnose_indexing_performance.py
+
+# Find optimal settings for your environment
+python3 find_optimal_settings.py
+```
+
+**2. Performance Monitoring:**
+- All scripts show real-time docs/sec rates
+- Progress bars with ETA estimates
+- Memory usage and batch processing stats
+
+**3. Bottleneck Identification:**
+- **Timestamp Updates**: 114k+ docs/sec (very fast)
+- **Elasticsearch Indexing**: 10-20k docs/sec (moderate)
+- **TaskExecutor Overhead**: 10-15x slowdown (major bottleneck)
+
+### Best Practices
+
+**For Maximum Speed:**
+1. Use direct loading scripts
+2. Configure optimal batch/worker settings
+3. Avoid subprocess-heavy operations
+4. Use direct ES timestamp updates
+
+**For Development:**
+1. Use control.py for exploration and configuration
+2. Switch to direct scripts for data operations
+3. Profile performance with diagnostic tools
+4. Test in target environment (Colab vs local)
+
+**For Demos:**
+1. Pre-load data with direct scripts
+2. Use timestamp updates for time simulation
+3. Keep reload times minimal with subset loading
+4. Test performance before live demos
+
 ## Configuration Points
 
 **Key Configuration Files:**
@@ -541,6 +675,7 @@ python3 scripts/trigger_bad_news_event.py --event-type market_crash
 2. Update `config.py` with new index name and generation settings
 3. Create generation function in appropriate script
 4. Add UI options to `lib/menu_system.py`
+5. **Performance**: Consider adding direct loading script for large datasets
 
 **Modifying Symbols:**
 - Edit `scripts/symbols_config.py` to add/remove stocks, ETFs, or bonds
@@ -550,7 +685,288 @@ python3 scripts/trigger_bad_news_event.py --event-type market_crash
 - Modify templates in `prompts/` directory
 - Changes automatically picked up by generation scripts
 
+**Performance Optimization Patterns:**
+
+**Creating Direct Loading Scripts:**
+```python
+# Template for direct loading script
+import os
+import sys
+import time
+from datetime import datetime
+
+# Set optimal performance settings
+BULK_SIZE = 1000
+PARALLEL_WORKERS = 24
+os.environ['ES_BULK_BATCH_SIZE'] = str(BULK_SIZE)
+os.environ['PARALLEL_BULK_WORKERS'] = str(PARALLEL_WORKERS)
+
+# Direct ES connection (bypass TaskExecutor)
+from scripts.common_utils import create_elasticsearch_client, ingest_data_to_es
+
+def fast_load():
+    es_client = create_elasticsearch_client()
+    # Direct ingest without subprocess overhead
+    ingest_data_to_es(es_client, filepath, index_name, id_field,
+                     batch_size=BULK_SIZE, parallel_bulk_workers=PARALLEL_WORKERS)
+```
+
+**When to Use Direct Scripts vs Control.py:**
+- **Direct Scripts**: Data loading, timestamp updates, production automation
+- **Control.py**: Configuration, exploration, interactive management, new user onboarding
+- **Hybrid**: Use control.py for setup, direct scripts for operations
+
+**Performance Testing Pattern:**
+```python
+# Always measure performance for new operations
+start_time = time.time()
+# ... perform operation ...
+elapsed = time.time() - start_time
+docs_per_sec = document_count / elapsed if elapsed > 0 else 0
+print(f"✓ {document_count:,} docs in {elapsed:.1f}s ({docs_per_sec:.0f} docs/sec)")
+```
+
+**Environment Detection Pattern:**
+```python
+# Detect notebook environments for optimal UX
+def is_notebook():
+    try:
+        return get_ipython().__class__.__name__ == 'ZMQInteractiveShell'  # Jupyter
+    except:
+        return 'google.colab' in sys.modules  # Colab
+
+# Adapt behavior based on environment
+if is_notebook():
+    # Use direct scripts, avoid interactive prompts
+    use_non_interactive_mode = True
+```
+
+**Bulk Operation Pattern:**
+```python
+# Process large datasets efficiently
+from concurrent.futures import ThreadPoolExecutor
+from elasticsearch.helpers import parallel_bulk
+
+def bulk_process(es_client, documents, batch_size=1000, workers=24):
+    def doc_generator():
+        for doc in documents:
+            yield {"_index": index_name, "_source": doc}
+    
+    for success, info in parallel_bulk(
+        es_client, doc_generator(), 
+        chunk_size=batch_size, 
+        thread_count=workers
+    ):
+        if not success:
+            print(f"Failed: {info}")
+```
+
 **Environment Management:**
 - Use `.env` file for local development
 - Set environment variables in production
 - All secrets automatically excluded by `.gitignore`
+
+## 🔧 Troubleshooting
+
+### Performance Issues
+
+#### Slow Data Loading
+
+**Problem**: Data loading takes several minutes instead of seconds
+
+**Diagnosis:**
+```bash
+# Check if using control.py (slow) vs direct scripts (fast)
+python3 control.py --custom --elasticsearch  # SLOW (several minutes)
+python3 load_all_data.py                     # FAST (~20 seconds)
+```
+
+**Solutions:**
+1. **Use Direct Scripts**: Replace control.py with direct loading scripts
+2. **Check Environment**: Colab/Jupyter environments have higher subprocess overhead
+3. **Optimize Settings**: Use 24 workers and 1000 batch size
+4. **Profile Performance**: Run `diagnose_indexing_performance.py`
+
+#### Slow Timestamp Updates
+
+**Problem**: Timestamp updates take minutes to complete
+
+**Solutions:**
+```bash
+# SLOW: Via control.py (several minutes)
+python3 control.py --update-timestamps
+
+# FAST: Direct update (~10 seconds for 100k docs)
+python3 update_es_timestamps.py
+```
+
+### Elasticsearch Issues
+
+#### Connection Failures
+
+**Problem**: 
+```
+ERROR: Could not connect to Elasticsearch
+```
+
+**Solutions:**
+1. **Check Credentials**:
+   ```bash
+   echo $ES_ENDPOINT_URL
+   echo $ES_API_KEY
+   ```
+2. **Test Connection**:
+   ```bash
+   python3 control.py --check-indices
+   ```
+3. **Common Fixes**:
+   - Verify Elasticsearch is running
+   - Check firewall/network connectivity
+   - Validate API key permissions
+   - Ensure correct endpoint format (https://...)
+
+#### Index Creation Errors
+
+**Problem**:
+```
+ERROR: Settings [index.number_of_shards] not available in serverless mode
+```
+
+**Solution**: This is handled automatically in newer versions. Update scripts suppress unsupported serverless settings.
+
+**Problem**:
+```
+ERROR: Index already exists
+```
+
+**Solutions:**
+```bash
+# Check index status
+python3 control.py --check-indices
+
+# Recreate indices if needed
+python3 control.py
+# Select option 5: Manage Indices
+# Choose recreate option
+```
+
+#### Bulk Indexing Failures
+
+**Problem**: Documents fail to index with version conflicts
+
+**Solutions:**
+1. **Check for Concurrent Operations**: Ensure no other processes are writing to indices
+2. **Use Conflict Handling**: Scripts automatically use `conflicts='proceed'`
+3. **Retry Failed Batches**: Re-run the loading script - it will skip existing docs
+
+### API and Authentication Issues
+
+#### Gemini API Errors
+
+**Problem**:
+```
+ERROR: GEMINI_API_KEY environment variable not set
+```
+
+**Solutions:**
+1. **Set API Key**:
+   ```bash
+   export GEMINI_API_KEY="your_api_key_here"
+   # Or add to .env file
+   echo "GEMINI_API_KEY=your_api_key_here" >> .env
+   ```
+
+2. **Verify Key Validity**:
+   ```bash
+   python3 scripts/list_models.py
+   ```
+
+**Problem**: API quota exceeded or rate limits
+
+**Solutions:**
+1. **Check Quota**: Monitor API usage in Google Cloud Console
+2. **Reduce Volume**: Use smaller dataset sizes for testing
+3. **Retry Logic**: Scripts automatically handle rate limits with exponential backoff
+
+#### SSL/TLS Warnings
+
+**Problem**: SSL warnings cluttering output
+
+**Solution**: Modern scripts automatically suppress these warnings:
+```python
+import warnings
+warnings.filterwarnings('ignore')
+import urllib3
+urllib3.disable_warnings()
+```
+
+### Data Generation Issues
+
+#### Empty or Missing Data Files
+
+**Problem**: Generated files are empty or missing
+
+**Solutions:**
+1. **Check File Permissions**: Ensure write permissions to `generated_data/` directory
+2. **Verify API Keys**: Most generation requires valid Gemini API key
+3. **Check Disk Space**: Ensure sufficient space for large datasets
+4. **Review Error Messages**: Run with verbose output to see specific failures
+
+#### Inconsistent Data Volumes
+
+**Problem**: Generated volumes don't match expected counts
+
+**Solutions:**
+1. **Check Configuration**: Review settings in `scripts/config.py`
+2. **Symbol Availability**: Ensure sufficient symbols defined in `symbols_config.py`
+3. **API Limits**: Gemini may have lower limits during high usage periods
+
+### Environment-Specific Issues
+
+#### Google Colab Problems
+
+**Problem**: control.py hangs or fails in Colab
+
+**Solutions:**
+1. **Use Non-Interactive Mode**:
+   ```bash
+   python3 control.py --quick-start --non-interactive
+   ```
+2. **Use Direct Scripts**: Bypass control.py entirely
+3. **Check Resource Limits**: Colab has CPU/memory limitations
+
+#### Jupyter Notebook Issues
+
+**Problem**: Notebook cells hang on interactive prompts
+
+**Solutions:**
+1. **Auto-Detection**: System automatically detects notebook environments
+2. **Force Non-Interactive**: Use `--non-interactive` flag explicitly
+3. **Use Direct Scripts**: Most reliable in notebook environments
+
+### Diagnostic Commands
+
+**System Status Check:**
+```bash
+python3 control.py --status
+```
+
+**Performance Profiling:**
+```bash
+python3 diagnose_indexing_performance.py
+python3 find_optimal_settings.py
+```
+
+**Index Health Check:**
+```bash
+python3 control.py --check-indices
+```
+
+**Connection Testing:**
+```bash
+# Test ES connection
+python3 -c "from scripts.common_utils import create_elasticsearch_client; print('✓ Connected' if create_elasticsearch_client() else '✗ Failed')"
+
+# Test Gemini connection  
+python3 scripts/list_models.py
+```

@@ -236,6 +236,7 @@ For maximum performance in Google Colab or when loading existing data, use these
 | `quick_reload.py` | Delete and reload indices (clean state) | Fast | `!python3 quick_reload.py --news --reports` |
 | `load_demo_subset.py` | Load subset for demos (5K holdings) | <5 seconds | `!python3 load_demo_subset.py` |
 | `load_fresh_data.py` | Load only recently generated files | Varies | `!python3 load_fresh_data.py --hours 2` |
+| `update_es_timestamps.py` | Update timestamps in ES without reloading | ~15 seconds | `!python3 update_es_timestamps.py` |
 
 **Why use these instead of control.py?**
 - ⚡ **10-15x faster** (20 seconds vs several minutes)
@@ -496,7 +497,25 @@ Options include:
 
 The system provides comprehensive timestamp management to keep your synthetic data current for demos and testing.
 
-**Update Existing Elasticsearch Documents:**
+**🚀 Fast Timestamp Updates (Recommended):**
+```bash
+# Update all ES timestamps to current time (no data reloading)
+python3 update_es_timestamps.py
+
+# Set timestamps to 24 hours ago
+python3 update_es_timestamps.py --offset -24
+
+# Set timestamps to 3 hours in the future
+python3 update_es_timestamps.py --offset 3
+
+# Update only specific indices
+python3 update_es_timestamps.py --indices news reports --offset -1
+
+# Preview changes without updating (dry run)
+python3 update_es_timestamps.py --dry-run
+```
+
+**Alternative: Update via control.py (slower):**
 ```bash
 # Update all document timestamps to current time
 python3 control.py --update-timestamps
@@ -743,6 +762,11 @@ python3 control.py --custom --elasticsearch --update-timestamps-on-load
 
 # Or update already-loaded ES data to appear current
 python3 control.py --update-timestamps
+
+# FAST: Direct timestamp update (recommended - 10x faster)
+python3 update_es_timestamps.py                    # Update all to current time
+python3 update_es_timestamps.py --offset -24       # 24 hours ago
+python3 update_es_timestamps.py --indices news reports  # Specific indices only
 
 # Create a time-sequenced demo (news from yesterday, reports from today)
 python3 control.py --update-timestamps --timestamp-offset -24  # News 24h ago
