@@ -254,6 +254,102 @@ All indices auto-created with proper mappings from `elasticsearch/index_mappings
 - **Lookup mode** for optimized storage
 - **Proper field types** (keyword, text, date, float)
 
+### 📄 Sample Documents
+
+Examples of what each document looks like in the five indices:
+
+#### financial_accounts
+Customer account with portfolio information:
+```json
+{
+  "account_id": "ACC00000-5506",
+  "first_name": "Brian",
+  "last_name": "Solomon",
+  "account_holder_name": "Brian Solomon",
+  "state": "NE",
+  "zip_code": "04946",
+  "account_type": "Conservative",
+  "risk_profile": "Medium",
+  "contact_preference": "email",
+  "total_portfolio_value": 4912549.57,
+  "last_updated": "2025-07-06T20:51:07"
+}
+```
+
+#### financial_holdings
+Stock/ETF/Bond position owned by an account:
+```json
+{
+  "holding_id": "ACC00000-5506-H00-2692",
+  "account_id": "ACC00000-5506",
+  "symbol": "EWO",
+  "quantity": 37,
+  "purchase_price": 128.95,
+  "purchase_date": "2019-10-03T03:48:27",
+  "is_high_value": false,
+  "last_updated": "2025-07-06T20:51:07"
+}
+```
+
+#### financial_asset_details
+Current pricing and metadata for financial instruments:
+```json
+{
+  "symbol": "EWO",
+  "asset_name": "iShares MSCI Austria Capped ETF",
+  "instrument_type": "ETF",
+  "sector": "Single Country Equity",
+  "index_membership": ["MSCI Austria"],
+  "country_of_origin": "Austria",
+  "current_price": {
+    "price": 231.41,
+    "last_updated": "2025-07-06T20:51:07"
+  },
+  "previous_closing_price": {
+    "price": 234.36,
+    "prev_close_date": "2025-07-03T20:51:07"
+  },
+  "bond_details": null,
+  "last_updated": "2025-07-06T20:51:07"
+}
+```
+
+#### financial_news
+AI-generated market news article:
+```json
+{
+  "article_id": "54ab5cd2-e605-417c-97d1-b178db4d23f2",
+  "title": "Vanguard's VXUS ETF Rallies as Major Holding Cleared",
+  "content": "Vanguard's Total International Stock ETF (VXUS) experienced a notable uptick...",
+  "source": "Bloomberg",
+  "published_date": "2025-07-14T06:04:22",
+  "url": "http://fakenews.com/article/8c65ff41",
+  "entities": ["VXUS", "Vanguard Total International Stock ETF"],
+  "sentiment": "positive",
+  "primary_symbol": "VXUS",
+  "last_updated": "2025-07-14T06:04:36"
+}
+```
+
+#### financial_reports
+Company earnings report or analyst note:
+```json
+{
+  "report_id": "e91d6e8e-8c23-4bc5-97be-a38e0d2d462d",
+  "title": "Altria Group (MO) Q4 Earnings Summary",
+  "content": "Altria Group Inc.'s Q4 summary highlighted significant strategic initiatives...",
+  "company_symbol": "MO",
+  "report_type": "Q4 Earnings Summary",
+  "report_date": "2025-07-14T08:06:28",
+  "author": "AI Financial Insights",
+  "url": "http://fakereports.com/company/MO/03dd827e",
+  "entities": ["Altria Group Inc.", "Consumer Staples"],
+  "sentiment": "neutral",
+  "primary_symbol": "MO",
+  "last_updated": "2025-07-14T08:06:45"
+}
+```
+
 </details>
 
 ## 🤝 Contributing
