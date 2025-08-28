@@ -11,6 +11,7 @@ A Python tool that creates realistic synthetic financial data for testing, demos
 - **Holdings**: Stock/ETF/bond positions with purchase history
 - **News**: AI-generated market articles with sentiment analysis
 - **Reports**: Company earnings and analyst notes
+- **Market Events**: Trigger realistic market crashes, volatility spikes, and bad news scenarios for compelling demos
 
 All data uses Google's Gemini AI for realistic content and loads into Elasticsearch with semantic search mappings.
 
@@ -50,7 +51,7 @@ python3 control.py
 
 ## 💡 Common Use Cases
 
-### Load Existing Data (No AI Key Needed)
+### 📊 Basic Data Loading (No AI Key Needed)
 Most common scenario - you have the generated data files and want them in Elasticsearch:
 
 ```bash
@@ -67,7 +68,7 @@ python3 load_demo_subset.py
 python3 quick_reload.py --all
 ```
 
-### Generate New Data (Requires Gemini API Key)
+### 🤖 Generate New Data (Requires Gemini API Key)
 Set your API key first:
 ```bash
 export GEMINI_API_KEY="your_key_here"
@@ -82,11 +83,49 @@ python3 control.py --quick-start
 python3 control.py --custom --accounts --num-accounts 1000
 ```
 
-### Demo Scenarios
-```bash
-# Create market crash scenario
-python3 control.py --trigger-event market_crash
+### 🎭 Market Event Demos (The Cool Stuff)
+Create realistic market scenarios for compelling demos and testing:
 
+#### Market Crash Scenario
+Simulate a broad market selloff:
+```bash
+python3 control.py --trigger-event market_crash
+```
+**What it creates:**
+- Negative news about SPY, QQQ, and major ETFs
+- Reports covering market-wide economic impact
+- Economic uncertainty and inflation themes  
+- Double the usual article volume for maximum impact
+
+#### Bad News Event
+Target specific companies with negative events:
+```bash  
+python3 control.py --trigger-event bad_news
+```
+**What it creates:**
+- 5 negative news articles about Tesla (TSLA)
+- 2 negative reports about Freeport-McMoRan (FCX)
+- Company-specific issues: recalls, production problems, regulatory issues
+
+#### Volatility Spike
+Create market uncertainty and mixed sentiment:
+```bash
+python3 control.py --trigger-event volatility
+```
+**What it creates:**
+- Articles about VIX and volatility instruments (UVXY, SVXY)
+- Mixed positive/negative sentiment patterns
+- Geopolitical tensions and uncertain economic data themes
+- Trading opportunity focused content
+
+**Perfect for:**
+- Live demos showing "breaking news" impact
+- Testing dashboards with different sentiment scenarios  
+- Simulating market stress conditions
+- Creating realistic time-sequenced events
+
+### ⏰ Timestamp Management for Demos
+```bash
 # Make old data appear fresh
 python3 update_es_timestamps.py
 
@@ -95,7 +134,7 @@ python3 update_es_timestamps.py --indices news --offset -24
 python3 update_es_timestamps.py --indices reports --offset 0
 ```
 
-### Jupyter Notebook / Google Colab
+### 📓 Jupyter Notebook / Google Colab
 ```python
 # Set credentials
 import os
@@ -123,7 +162,7 @@ os.environ['GEMINI_API_KEY'] = 'your_gemini_key'
 - **10-15x Faster Loading**: Direct scripts bypass control.py overhead
 - **Real-time Progress**: Live docs/sec rates and progress bars  
 - **Semantic Search Ready**: ELSER-compatible field mappings
-- **Market Events**: Trigger crashes, volatility, bad news scenarios
+- **Market Event Simulation**: Create realistic breaking news scenarios - market crashes, company scandals, volatility spikes
 - **Timestamp Management**: Make historical data appear current
 - **Index Management**: Auto-create, validate, recreate Elasticsearch indices
 
