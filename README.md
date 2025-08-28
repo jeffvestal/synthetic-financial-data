@@ -254,11 +254,16 @@ All indices auto-created with proper mappings from `elasticsearch/index_mappings
 - **Lookup mode** for optimized storage
 - **Proper field types** (keyword, text, date, float)
 
-### 📄 Sample Documents
+</details>
+
+## 📄 Sample Documents
+
+<details>
+<summary>Click to see example documents from each index</summary>
 
 Examples of what each document looks like in the five indices:
 
-#### financial_accounts
+### financial_accounts
 Customer account with portfolio information:
 ```json
 {
@@ -276,7 +281,7 @@ Customer account with portfolio information:
 }
 ```
 
-#### financial_holdings
+### financial_holdings
 Stock/ETF/Bond position owned by an account:
 ```json
 {
@@ -291,7 +296,7 @@ Stock/ETF/Bond position owned by an account:
 }
 ```
 
-#### financial_asset_details
+### financial_asset_details
 Current pricing and metadata for financial instruments:
 ```json
 {
@@ -314,7 +319,7 @@ Current pricing and metadata for financial instruments:
 }
 ```
 
-#### financial_news
+### financial_news
 AI-generated market news article:
 ```json
 {
@@ -331,7 +336,7 @@ AI-generated market news article:
 }
 ```
 
-#### financial_reports
+### financial_reports
 Company earnings report or analyst note:
 ```json
 {
