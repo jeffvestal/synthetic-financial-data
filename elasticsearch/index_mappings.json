@@ -153,14 +153,49 @@
         "quantity": {
           "type": "float"
         },
-        "purchase_price": {
+        "last_updated": {
+          "type": "date"
+        }
+      }
+    }
+  },
+  "financial_trades": {
+    "settings": {
+      "index.mode": "lookup",
+      "number_of_shards": 2,
+      "number_of_replicas": 0
+    },
+    "mappings": {
+      "properties": {
+        "trade_id": {
+          "type": "keyword"
+        },
+        "account_id": {
+          "type": "keyword"
+        },
+        "symbol": {
+          "type": "keyword"
+        },
+        "trade_type": {
+          "type": "keyword"
+        },
+        "order_type": {
+          "type": "keyword"
+        },
+        "order_status": {
+          "type": "keyword"
+        },
+        "quantity": {
           "type": "float"
         },
-        "purchase_date": {
-          "type": "date"
+        "execution_price": {
+          "type": "float"
         },
-        "is_high_value": {
-          "type": "boolean"
+        "trade_cost": {
+          "type": "float"
+        },
+        "execution_timestamp": {
+          "type": "date"
         },
         "last_updated": {
           "type": "date"

@@ -118,6 +118,27 @@ class IndexManager:
                 print(f"Warning: No mapping found for index '{index_name}'")
                 mapping = {}
         
+        # Make a copy to avoid modifying the original
+        mapping = mapping.copy()
+        
+        # Remove serverless-incompatible settings
+        if 'settings' in mapping:
+            original_settings = mapping.get('settings', {})
+            # Only keep serverless-compatible settings
+            serverless_settings = {}
+            
+            # Keep only settings that work in serverless
+            allowed_settings = ['index.mode']
+            for key, value in original_settings.items():
+                if key in allowed_settings:
+                    serverless_settings[key] = value
+            
+            # Update or remove settings
+            if serverless_settings:
+                mapping['settings'] = serverless_settings
+            else:
+                mapping.pop('settings', None)
+        
         try:
             # Create index with settings and mappings
             response = self.es_client.indices.create(

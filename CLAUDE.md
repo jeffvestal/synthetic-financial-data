@@ -4,59 +4,74 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-The Synthetic Financial Data Generator is a comprehensive Python toolkit for creating realistic financial datasets for testing, demos, and development. It generates:
+The Synthetic Financial Data Generator is a comprehensive Python toolkit for creating realistic financial datasets with trading activity and fraud scenarios for Elasticsearch analysis training, testing, demos, and development. It generates:
 
+### 🏢 Core Financial Data
 - **Customer Accounts**: 7,000+ realistic accounts with portfolio information, risk profiles, and geographic distribution
 - **Holdings**: Stock, ETF, and bond positions with purchase history and current valuations  
+- **Trading Activity**: 262,000+ realistic trades with proper pricing, timing, and market patterns
 - **Asset Details**: Current prices, sectors, and metadata for 100+ financial instruments
-- **News Articles**: 500+ AI-generated market news with sentiment analysis and entity extraction
-- **Financial Reports**: 100+ company reports, earnings summaries, and analyst notes
 
-All content is generated using Google's Gemini AI for realistic language and can be automatically ingested into Elasticsearch with proper index mappings for semantic search capabilities.
+### 📰 Market Intelligence
+- **News Articles**: 550+ AI-generated market news with sentiment analysis and entity extraction
+- **Financial Reports**: 120+ company reports, earnings summaries, and analyst notes
+- **Market Events**: Realistic market crashes, volatility spikes, and targeted company events
+
+### 🕵️ Fraud Detection Training (NEW)
+- **Insider Trading Scenarios**: Pre-announcement coordinated trading patterns (5-15 accounts, 12-48h before news)
+- **Wash Trading Rings**: Circular trading between related accounts with minimal spreads
+- **Pump & Dump Schemes**: Multi-phase price manipulation across accumulation→pump→dump phases
+- **Investigation Framework**: Complete analyst training guide with Elasticsearch queries
+
+All content is generated using Google's Gemini AI for realistic language and automatically ingested into Elasticsearch with proper index mappings for semantic search capabilities.
 
 ## Directory Structure
 
 ```
 synthetic-financial-data/
 ├── control.py                     # 🎮 Main interactive control script
-├── update_es_timestamps.py        # ⚡ Fast ES timestamp updater (10x faster)
+├── load_fresh_data.py            # 🆕 Load recently generated data files
 ├── load_all_data.py              # 🚀 Fast data loader (bypasses control.py)
-├── load_specific_indices.py       # 🎯 Selective data loader
-├── load_demo_subset.py           # 🎭 Demo subset loader (5K holdings)
-├── load_fresh_data.py            # 🆕 Recent data loader
-├── quick_reload.py               # 🔄 Quick reload (delete + load)
-├── requirements.txt               # Python dependencies
+├── fraud_investigation_guide.md   # 🕵️ Complete fraud investigation training guide
+├── semantic_search_examples.md   # 🔍 Semantic search query examples
+├── fraud_detection_examples.md   # 📊 Fraud detection query documentation
+├── requirements.txt               # Python dependencies  
 ├── README.md                     # Comprehensive documentation
 ├── .gitignore                    # Git ignore rules (protects secrets & large files)
 ├── scripts/                      # 🔧 Core generation scripts
 │   ├── config.py                 # Centralized configuration
-│   ├── generate_holdings_accounts.py
-│   ├── generate_reports_and_news_new.py
-│   ├── trigger_bad_news_event.py
+│   ├── generate_holdings_accounts.py  # Generate accounts, holdings, asset details
+│   ├── generate_trades.py        # Generate realistic trading activity
+│   ├── generate_reports_and_news_new.py  # Generate news articles and reports
+│   ├── trigger_bad_news_event.py # Generate market events (crashes, bad news, volatility)
+│   ├── generate_insider_trading.py  # 🕵️ Generate insider trading scenarios
+│   ├── generate_wash_trading.py    # 🔄 Generate wash trading ring scenarios
+│   ├── generate_pump_and_dump.py   # 🎯 Generate pump & dump manipulation schemes
 │   ├── common_utils.py           # Shared utilities with ES integration
 │   ├── symbol_manager.py         # Symbol management and filtering
 │   └── symbols_config.py         # Stock/ETF/Bond definitions (100+ symbols)
 ├── lib/                          # 📚 Control script libraries  
-│   ├── menu_system.py            # Interactive menus with Rich UI
+│   ├── menu_system.py            # Interactive menus with Rich UI (updated with fraud scenarios)
 │   ├── config_manager.py         # Configuration and presets management
-│   ├── task_executor.py          # Task execution with live progress
-│   ├── index_manager.py          # 🗄️ Elasticsearch index management
-│   └── timestamp_updater.py      # 🕐 Timestamp update operations
+│   ├── task_executor.py          # Task execution with live progress (updated for fraud scenarios)
+│   └── index_manager.py          # 🗄️ Elasticsearch index management
 ├── elasticsearch/                # 🔍 Elasticsearch configuration
-│   └── index_mappings.json       # Complete index mappings for all 5 indices
+│   └── index_mappings.json       # Complete index mappings for all 6 indices (including trades)
 ├── prompts/                      # 🤖 AI prompt templates for content generation
 │   ├── general_market_news.txt   # General market news template
 │   ├── specific_news.txt         # Company-specific news template  
 │   ├── specific_report.txt       # Company report template
 │   └── thematic_sector_report.txt # Thematic industry report template
 └── generated_data/               # 📊 Output directory (ignored by git for large files)
-    ├── generated_accounts.jsonl
-    ├── generated_holdings.jsonl
-    ├── generated_asset_details.jsonl
-    ├── generated_news.jsonl
-    ├── generated_reports.jsonl
-    ├── generated_controlled_news.jsonl
-    └── generated_controlled_reports.jsonl
+    ├── generated_accounts.jsonl          # 7,000+ customer accounts
+    ├── generated_holdings.jsonl          # 70K-175K portfolio holdings
+    ├── generated_asset_details.jsonl     # 100+ asset pricing/metadata
+    ├── financial_trades.jsonl            # 262K+ realistic trades
+    ├── generated_news.jsonl              # 550+ news articles
+    ├── generated_reports.jsonl           # 120+ financial reports
+    ├── generated_controlled_news.jsonl   # Market event news
+    ├── generated_controlled_reports.jsonl # Market event reports
+    └── generated_controlled_trades.jsonl  # Fraud scenario trades
 ```
 
 ## Key Architecture
@@ -970,3 +985,178 @@ python3 -c "from scripts.common_utils import create_elasticsearch_client; print(
 # Test Gemini connection  
 python3 scripts/list_models.py
 ```
+
+## 🔄 Trade Activity Engine & Fraud Scenarios (In Development)
+
+### Overview
+Major enhancement to shift from static holdings to dynamic trade-based positions with fraud detection demo capabilities. This transforms the system from randomly generated positions to realistic trade histories that enable compelling fraud and anomaly detection demonstrations.
+
+### Architecture Changes
+
+#### New Data Model
+- **`financial_trades`**: Complete transaction history with execution details (NEW)
+- **`financial_holdings`** (simplified): Current positions calculated from trade aggregation
+- **Removed from holdings**: `purchase_price`, `purchase_date`, `is_high_value` (now in trades)
+
+#### Simplified Holdings Schema
+```json
+{
+  "holding_id": "ACC00000-5506-H00-2692",
+  "account_id": "ACC00000-5506",
+  "symbol": "AAPL",
+  "quantity": 150
+}
+```
+
+#### New Trades Schema
+```json
+{
+  "trade_id": "TRD-20250828-001234",
+  "account_id": "ACC00000-5506",
+  "symbol": "AAPL",
+  "trade_type": "buy",        // buy, sell, short, cover
+  "order_type": "market",     // market, limit, stop
+  "order_status": "executed", // executed, cancelled
+  "quantity": 50,
+  "execution_price": 175.25,
+  "trade_cost": 8762.50,
+  "execution_timestamp": "2025-08-28T14:30:00",
+  "last_updated": "2025-08-28T14:30:00"
+}
+```
+
+### Implementation Status ✅ COMPLETED
+
+#### Phase 1: Core Trading Engine ✅ COMPLETED
+- [x] **Update Index Mappings** (`elasticsearch/index_mappings.json`)
+  - [x] Add `financial_trades` index definition with full trading schema
+  - [x] Update all index mappings for 6 indices (accounts, holdings, assets, trades, news, reports)
+  - [x] Add semantic search support and lookup mode optimization
+
+- [x] **Create Trade Generation Script** (`scripts/generate_trades.py`)
+  - [x] Risk-based trade volume generation (Conservative: 5-15, Medium: 15-50, Growth: 50-150+)
+  - [x] Realistic price variations with bid/ask spreads and market impact
+  - [x] Full trade type support: buy, sell, short, cover
+  - [x] Cancelled order simulation (7% cancellation rate)
+  - [x] 262,000+ trades generated across 3-month timeline
+  - [x] Optimized batch processing (1000 account chunks)
+  - [x] Output: `generated_data/financial_trades.jsonl`
+
+- [x] **Holdings Integration**
+  - [x] Holdings now reflect current positions from trading activity
+  - [x] Proper account→trade→holding relationships maintained
+  - [x] Support for long and short positions
+
+- [x] **Update Loading Scripts**
+  - [x] `load_fresh_data.py` - loads all recent data including trades
+  - [x] `load_all_data.py` - comprehensive data loading
+  - [x] All loaders include trades in proper sequence
+
+#### Phase 2: Fraud & Anomaly Scenarios ✅ COMPLETED
+
+- [x] **Extend control.py**
+  - [x] Add fraud scenario menu options: `insider_trading`, `wash_trading`, `pump_and_dump`
+  - [x] Full interactive menu integration with live progress dashboard
+  - [x] Command line support: `--trigger-event [fraud_type]`
+
+- [x] **Insider Trading Scenario** (`scripts/generate_insider_trading.py`)
+  - [x] Pre-announcement coordinated trading (5-15 accounts, 12-48h before news)
+  - [x] Risk profile biased account selection (High/Very High preference)
+  - [x] Realistic price progression and profit-taking patterns
+  - [x] Timeline correlation with news events
+  - [x] Investigation metadata: `scenario_type`, `news_announcement_time`
+
+- [x] **Wash Trading Scenario** (`scripts/generate_wash_trading.py`)
+  - [x] Circular trading rings (2-4 related accounts)
+  - [x] Account relationship patterns (geographic, name similarity, sequential IDs)
+  - [x] Minimal price spreads (±0.1-0.3%) with high frequency
+  - [x] 20% cancellation rate and counterpart tracking
+  - [x] Investigation metadata: `wash_ring_id`, `counterpart_account`
+
+- [x] **Pump & Dump Scenario** (`scripts/generate_pump_and_dump.py`)
+  - [x] Multi-phase manipulation: accumulation (5-10 days) → pump (2-6h) → dump (1-3h)
+  - [x] 8-20 coordinated accounts with volume multipliers (2-4x → 8-20x → 15-35x)
+  - [x] Price targets: +15-40% pump, -25-50% dump
+  - [x] Coordination patterns (tight/loose/mixed timing)
+  - [x] Investigation metadata: `pump_scheme_id`, `scenario_phase`
+
+- [x] **Investigation Framework**
+  - [x] Complete fraud investigation guide (`fraud_investigation_guide.md`)
+  - [x] 15+ specialized Elasticsearch queries for each fraud type
+  - [x] Investigation workflows and red flag indicators
+  - [x] Sample training scenarios with realistic patterns
+
+- [x] **Update Documentation**
+  - [x] Updated README.md with fraud scenario capabilities
+  - [x] Added fraud investigation training section
+  - [x] Created semantic search examples and fraud detection guides
+  - [x] Updated all API documentation and usage examples
+
+### Commands (Coming Soon)
+
+```bash
+# Generate fresh trade data
+python3 scripts/generate_trades.py
+python3 scripts/generate_holdings.py  # Must run after trades
+
+# Migrate existing holdings to trades
+python3 scripts/migrate_holdings_to_trades.py
+
+# Load with trades
+python3 load_all_data.py  # Will include trades
+
+# Fraud scenarios
+python3 control.py --trigger-event insider_trading --symbol AAPL --account-id ACC00001 --sentiment positive
+python3 control.py --trigger-event wash_trading --symbol TSLA --account-id ACC00002
+python3 control.py --trigger-event coordinated_manipulation --symbol GME --num-accounts 10
+```
+
+### Technical Decisions
+
+**Trade Generation:**
+- **Pricing**: Use `financial_asset_details` current_price as baseline
+- **Variations**: Bid/ask spread ±0.5%, slippage 0.1-0.3% for large orders
+- **Volume**: Based on account risk profile (5-150 trades per account)
+- **Time Distribution**: Random within June-August 2025 window
+
+**Position Calculation:**
+- **Formula**: Net Position = Σ(buys) - Σ(sells) + Σ(covers) - Σ(shorts)
+- **Shorts**: Allowed (negative positions supported)
+- **Aggregation**: In-memory using defaultdict for efficiency
+- **Scale**: Optimized for 1M+ trades
+
+**Fraud Patterns:**
+- **Insider Trading**: Pre-news positioning with configurable sentiment
+- **Wash Trading**: Rapid self-trading to manipulate volume
+- **Pump & Dump**: Multi-phase coordinated manipulation
+- **Output**: Separate controlled files for easy demo reset
+
+**Performance Optimization:**
+- **Chunking**: Process 1000 accounts at a time
+- **Generators**: Use for reading large trade files
+- **Memory**: Aggregate in-memory with efficient data structures
+- **Parallel**: Consider parallel processing for trade generation
+
+### Development Notes
+
+**Order of Implementation:**
+1. Index mapping updates
+2. Trade generation script
+3. Holdings aggregation from trades
+4. Migration script for backwards compatibility
+5. Update all loading scripts
+6. Implement fraud scenarios
+7. Documentation and examples
+
+**Testing Considerations:**
+- Verify trade aggregation = holdings
+- Test with small dataset first (100 accounts)
+- Validate fraud patterns are detectable
+- Performance test with full 7K accounts
+
+**Future Enhancements:**
+- Real-time trade streaming
+- Market maker algorithms
+- Options and derivatives
+- Complex fraud patterns (spoofing, layering)
+- ML-based anomaly detection examples

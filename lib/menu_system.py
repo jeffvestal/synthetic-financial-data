@@ -126,7 +126,10 @@ class MenuSystem:
             ("1", "📉 Bad News Event", "Generate negative news for TSLA and FCX"),
             ("2", "💥 Market Crash", "Simulate market-wide negative event"),
             ("3", "📈 Volatility Spike", "Create high volatility scenario"),
-            ("4", "🔙 Back to Main Menu", "Return to main menu"),
+            ("4", "🕵️  Insider Trading", "Generate pre-announcement trading scenarios"),
+            ("5", "🔄 Wash Trading", "Create circular trading patterns"),
+            ("6", "🎯 Pump & Dump", "Generate coordinated manipulation schemes"),
+            ("7", "🔙 Back to Main Menu", "Return to main menu"),
         ]
         
         table = Table(show_header=False, box=None, padding=(0, 2))
@@ -147,15 +150,18 @@ class MenuSystem:
         
         choice = Prompt.ask(
             "\n[bold cyan]Choose an event[/bold cyan]",
-            choices=["1", "2", "3", "4"],
-            default="4"
+            choices=["1", "2", "3", "4", "5", "6", "7"],
+            default="7"
         )
         
         event_map = {
             "1": "bad_news",
             "2": "market_crash", 
             "3": "volatility",
-            "4": None
+            "4": "insider_trading",
+            "5": "wash_trading",
+            "6": "pump_and_dump",
+            "7": None
         }
         
         return event_map.get(choice)

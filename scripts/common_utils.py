@@ -17,9 +17,13 @@ import gc  # For garbage collection in Colab
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List, Generator
 import warnings
-from urllib3.exceptions import InsecureRequestWarning
+from urllib3.exceptions import InsecureRequestWarning, NotOpenSSLWarning
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
+
+# Suppress urllib3 warnings before importing elasticsearch
+warnings.filterwarnings('ignore', category=NotOpenSSLWarning)
+warnings.filterwarnings('ignore', category=InsecureRequestWarning)
 
 # Add parent directory to path for lib imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -31,9 +35,6 @@ from tqdm import tqdm
 
 # Local imports
 from config import GEMINI_CONFIG, ES_CONFIG
-
-# Suppress SSL warnings for development
-warnings.filterwarnings('ignore', category=InsecureRequestWarning)
 
 # --- Gemini API Functions ---
 
@@ -199,11 +200,24 @@ def create_elasticsearch_client() -> Elasticsearch:
         ValueError: If connection fails
     """
     try:
+        # Determine if we should verify certs based on endpoint
+        endpoint = ES_CONFIG['endpoint_url']
+        verify_certs = ES_CONFIG['verify_certs']
+        
+        # For Elastic Cloud endpoints, always verify certs
+        if 'elastic.cloud' in endpoint or 'es.io' in endpoint:
+            verify_certs = True
+        
+        # Suppress the security warning if we're explicitly not verifying
+        if not verify_certs:
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        
         es_client = Elasticsearch(
-            ES_CONFIG['endpoint_url'],
+            endpoint,
             api_key=ES_CONFIG['api_key'],
             request_timeout=ES_CONFIG['request_timeout'],
-            verify_certs=ES_CONFIG['verify_certs']
+            verify_certs=verify_certs
         )
         
         # Test connection
@@ -561,3 +575,68 @@ def clean_json_string(text: str) -> str:
     # Remove excessive whitespace
     text = ' '.join(text.split())
     return text
+
+# --- Inference Endpoint Functions ---
+
+def check_inference_endpoint_needed(indices: List[str]) -> bool:
+    """
+    Check if any of the indices require inference endpoints.
+    
+    Args:
+        indices: List of index names to check
+        
+    Returns:
+        bool: True if any index needs inference endpoints
+    """
+    semantic_indices = ['financial_news', 'financial_reports']
+    return any(idx in semantic_indices for idx in indices)
+
+def wait_for_inference_endpoint_if_needed(indices: List[str]) -> bool:
+    """
+    Wait for inference endpoint if any indices need it.
+    
+    Args:
+        indices: List of index names to load
+        
+    Returns:
+        bool: True if ready or not needed, False if failed
+    """
+    if not check_inference_endpoint_needed(indices):
+        return True
+    
+    try:
+        # Import here to avoid circular imports
+        from lib.inference_endpoint_checker import wait_for_elser_endpoint
+        
+        print("\n🔍 Semantic search indices detected. Checking inference endpoint...")
+        
+        success, message = wait_for_elser_endpoint(
+            ES_CONFIG['endpoint_url'], 
+            ES_CONFIG['api_key'],
+            max_wait_seconds=300  # 5 minutes max
+        )
+        
+        print(message)
+        
+        if not success:
+            print("\n⚠️  Options:")
+            print("1. Wait for endpoint to be deployed in Kibana")
+            print("2. Continue without semantic search indices")
+            
+            choice = input("\nContinue without semantic indices? (y/N): ").lower()
+            if choice == 'y':
+                print("📝 Skipping semantic search indices...")
+                return False  # Indicate to skip semantic indices
+            else:
+                print("❌ Stopping. Please deploy the inference endpoint and try again.")
+                return False
+        
+        return True
+        
+    except ImportError:
+        print("⚠️  Inference endpoint checker not available. Continuing...")
+        return True
+    except Exception as e:
+        print(f"⚠️  Error checking inference endpoint: {e}")
+        print("Continuing with loading (semantic search may fail)...")
+        return True

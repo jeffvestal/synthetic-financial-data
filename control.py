@@ -7,6 +7,11 @@ all aspects of synthetic financial data generation, including configuration,
 execution, and monitoring.
 """
 
+import warnings
+# Suppress warnings before any other imports
+warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL')
+warnings.filterwarnings('ignore', message='Connecting to.*using TLS with verify_certs=False')
+
 import os
 import sys
 import signal
@@ -412,7 +417,7 @@ Examples:
                        help="Number of news articles to generate")
     parser.add_argument("--num-reports", type=int, default=100,
                        help="Number of reports to generate")
-    parser.add_argument("--trigger-event", choices=["bad_news", "market_crash", "volatility"],
+    parser.add_argument("--trigger-event", choices=["bad_news", "market_crash", "volatility", "insider_trading", "wash_trading", "pump_and_dump"],
                        help="Trigger a specific event type")
     parser.add_argument("--status", action="store_true",
                        help="Show system status and exit")

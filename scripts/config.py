@@ -28,7 +28,8 @@ ES_CONFIG = {
         'holdings': "financial_holdings", 
         'asset_details': "financial_asset_details",
         'news': "financial_news",
-        'reports': "financial_reports"
+        'reports': "financial_reports",
+        'trades': "financial_trades"  # NEW - trade activity index
     },
     
     # Index creation settings
@@ -67,6 +68,8 @@ FILE_PATHS = {
     'generated_reports': os.path.join(BASE_DIR, "generated_data", "generated_reports.jsonl"),
     'generated_controlled_news': os.path.join(BASE_DIR, "generated_data", "generated_controlled_news.jsonl"),
     'generated_controlled_reports': os.path.join(BASE_DIR, "generated_data", "generated_controlled_reports.jsonl"),
+    'generated_trades': os.path.join(BASE_DIR, "generated_data", "financial_trades.jsonl"),  # NEW - trade activity data
+    'generated_controlled_trades': os.path.join(BASE_DIR, "generated_data", "generated_controlled_trades.jsonl"),  # NEW - fraud scenario trades
     
     # Prompt template files
     'prompts': {
@@ -109,6 +112,27 @@ GENERATION_SETTINGS = {
         'num_general_news': 4,
         'num_specific_reports': 2,
         'num_thematic_reports': 1
+    },
+    
+    # Trade generation settings
+    'trades': {
+        'time_window_start': "2025-06-01",
+        'time_window_end': "2025-08-28",
+        'batch_size': 1000,  # accounts per batch for memory efficiency
+        'cancellation_rate': 0.07,  # 7% of trades are cancelled
+        'bid_ask_spread': 0.005,  # 0.5% bid/ask spread
+        'large_order_threshold': 1000,  # shares - orders above this get slippage
+        'slippage_range': (0.001, 0.003),  # 0.1-0.3% slippage for large orders
+        'risk_trade_volumes': {  # trade count ranges by risk profile
+            'Conservative': (5, 15),
+            'Very Low': (5, 15),
+            'Low': (5, 15),
+            'Medium': (15, 50),
+            'Moderate': (15, 50),
+            'Growth': (50, 150),
+            'High': (50, 150),
+            'Very High': (50, 150)
+        }
     }
 }
 

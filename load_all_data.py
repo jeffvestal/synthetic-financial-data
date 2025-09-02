@@ -23,7 +23,7 @@ os.environ['PARALLEL_BULK_WORKERS'] = str(PARALLEL_WORKERS)
 scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
 sys.path.insert(0, scripts_dir)
 
-from common_utils import create_elasticsearch_client, ingest_data_to_es
+from common_utils import create_elasticsearch_client, ingest_data_to_es, wait_for_inference_endpoint_if_needed
 
 def load_all_data():
     """Load all data with detailed progress logging."""
@@ -44,9 +44,10 @@ def load_all_data():
         print("\nMake sure ES_ENDPOINT_URL and ES_API_KEY are set")
         return False
     
-    # Define all indices to load
+    # Define all indices to load - trades must load before holdings
     indices_to_load = [
         ('generated_data/generated_accounts.jsonl', 'financial_accounts', 'account_id', 'Accounts'),
+        ('generated_data/financial_trades.jsonl', 'financial_trades', 'trade_id', 'Trades'),  # NEW - load before holdings
         ('generated_data/generated_holdings.jsonl', 'financial_holdings', 'holding_id', 'Holdings'),
         ('generated_data/generated_asset_details.jsonl', 'financial_asset_details', 'symbol', 'Assets'),
         ('generated_data/generated_news.jsonl', 'financial_news', 'article_id', 'News'),
@@ -70,6 +71,16 @@ def load_all_data():
     
     print(f"\n📊 Total: {total_docs:,} documents across {len(available_indices)} indices")
     print("=" * 60)
+    
+    # Check inference endpoint if semantic indices are present
+    index_names = [idx[1] for idx in available_indices]
+    endpoint_ready = wait_for_inference_endpoint_if_needed(index_names)
+    
+    # Filter out semantic indices if endpoint not ready
+    if not endpoint_ready:
+        semantic_indices = ['financial_news', 'financial_reports']
+        available_indices = [idx for idx in available_indices if idx[1] not in semantic_indices]
+        print(f"📊 Adjusted total: {sum(idx[4] for idx in available_indices):,} documents (excluding semantic indices)")
     
     # Process each index
     overall_start = time.time()

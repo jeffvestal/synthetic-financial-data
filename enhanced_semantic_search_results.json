@@ -1,0 +1,173 @@
+{
+  "optimized_queries": [
+    {
+      "test": "Environmental Legal Issues (High Precision)",
+      "query": "environmental lawsuit disposal practices regulatory compliance",
+      "expected": [
+        "VXUS",
+        "ISRG"
+      ],
+      "found": [
+        "ISRG",
+        "EA",
+        null
+      ],
+      "passed": true,
+      "boost_settings": {
+        "semantic": 3.0,
+        "title": 2.0
+      }
+    },
+    {
+      "test": "Financial Risk Management (Balanced)",
+      "query": "supply chain risk insurance volatility business interruption",
+      "expected": [
+        "AIG"
+      ],
+      "found": [
+        "AIG",
+        null
+      ],
+      "passed": true,
+      "boost_settings": {
+        "semantic": 2.0,
+        "title": 1.5
+      }
+    },
+    {
+      "test": "Corporate Legal Challenges (Comprehensive)",
+      "query": "patent invalidation pharmaceutical drug court ruling intellectual property",
+      "expected": [
+        "JNJ"
+      ],
+      "found": [
+        "IBM",
+        "DHR",
+        "ISRG",
+        "PG",
+        "JNJ"
+      ],
+      "passed": true,
+      "boost_settings": {
+        "semantic": 2.5,
+        "title": 2.0
+      }
+    }
+  ],
+  "hybrid_search": [
+    {
+      "query": "corporate leadership succession planning communication services",
+      "hybrid_count": 10,
+      "semantic_count": 10,
+      "response_time": 0.2963447570800781,
+      "top_hybrid_symbols": [
+        "CHTR",
+        "DIS",
+        "SMH"
+      ]
+    },
+    {
+      "query": "balance sheet debt restructuring consumer staples financial optimization",
+      "hybrid_count": 10,
+      "semantic_count": 10,
+      "response_time": 0.28888392448425293,
+      "top_hybrid_symbols": [
+        "XLP",
+        "NEE",
+        null
+      ]
+    },
+    {
+      "query": "renewable energy clean technology utilities sector transformation",
+      "hybrid_count": 10,
+      "semantic_count": 10,
+      "response_time": 0.20554494857788086,
+      "top_hybrid_symbols": [
+        "NEE",
+        "DUK",
+        null
+      ]
+    }
+  ],
+  "domain_validation": [
+    {
+      "domain": "Risk Management",
+      "queries_tested": 3,
+      "avg_hits": 20.0,
+      "avg_score": 49.93359366666667,
+      "results": [
+        {
+          "query": "operational risk supply chain disruption mitigation strategies",
+          "total_hits": 20,
+          "top_score": 60.247223,
+          "top_symbol": null
+        },
+        {
+          "query": "credit risk assessment financial exposure management",
+          "total_hits": 20,
+          "top_score": 40.30516,
+          "top_symbol": "AIG"
+        },
+        {
+          "query": "market volatility portfolio optimization defensive positioning",
+          "total_hits": 20,
+          "top_score": 49.248398,
+          "top_symbol": null
+        }
+      ]
+    },
+    {
+      "domain": "Corporate Finance",
+      "queries_tested": 3,
+      "avg_hits": 20.0,
+      "avg_score": 44.23135766666667,
+      "results": [
+        {
+          "query": "capital structure optimization debt equity balance",
+          "total_hits": 20,
+          "top_score": 47.543324,
+          "top_symbol": null
+        },
+        {
+          "query": "merger acquisition due diligence valuation analysis",
+          "total_hits": 20,
+          "top_score": 36.478897,
+          "top_symbol": null
+        },
+        {
+          "query": "dividend policy shareholder return capital allocation",
+          "total_hits": 20,
+          "top_score": 48.671852,
+          "top_symbol": "XLI"
+        }
+      ]
+    },
+    {
+      "domain": "Regulatory Compliance",
+      "queries_tested": 3,
+      "avg_hits": 20.0,
+      "avg_score": 55.74199433333333,
+      "results": [
+        {
+          "query": "environmental compliance sustainability reporting requirements",
+          "total_hits": 20,
+          "top_score": 63.080578,
+          "top_symbol": null
+        },
+        {
+          "query": "financial disclosure transparency regulatory filing updates",
+          "total_hits": 20,
+          "top_score": 42.277508,
+          "top_symbol": null
+        },
+        {
+          "query": "intellectual property protection patent litigation defense",
+          "total_hits": 20,
+          "top_score": 61.867897,
+          "top_symbol": "IBM"
+        }
+      ]
+    }
+  ],
+  "performance_comparison": []
+}

@@ -1,101 +1,144 @@
 # Synthetic Financial Data Generator 🏦
 
-Generate realistic financial datasets in seconds. Create accounts, holdings, news articles, and reports with AI-generated content, ready for Elasticsearch.
+Generate realistic financial datasets with trading activity, market events, and **fraud scenarios** for Elasticsearch analysis training. Create accounts, holdings, trades, news, reports, and sophisticated fraud patterns with AI-generated content.
 
 ![Header Image](synthetic-financial-data-header.png "Synthetic Financial Data Generator")
 
 ## 🎯 What Is This?
 
-A Python tool that creates realistic synthetic financial data for testing, demos, and development:
-- **Accounts**: Customer portfolios with risk profiles  
-- **Holdings**: Stock/ETF/bond positions with purchase history
-- **News**: AI-generated market articles with sentiment analysis
-- **Reports**: Company earnings and analyst notes
-- **Market Events**: Trigger realistic market crashes, volatility spikes, and bad news scenarios for compelling demos
+A comprehensive Python toolkit that creates realistic synthetic financial data for testing, demos, fraud detection training, and development:
 
-All data uses Google's Gemini AI for realistic content and loads into Elasticsearch with semantic search mappings.
+### 🏢 **Core Financial Data**
+- **7,000+ Accounts**: Customer portfolios with risk profiles and geographic distribution
+- **Holdings**: Stock/ETF/bond positions with purchase history and current valuations
+- **262,000+ Trades**: Realistic trading activity with proper pricing and timing patterns
+- **Asset Details**: Current prices, sectors, and metadata for 100+ financial instruments
+
+### 📰 **Market Intelligence** 
+- **550+ News Articles**: AI-generated market news with sentiment analysis and entity extraction
+- **120+ Financial Reports**: Company reports, earnings summaries, and analyst notes
+- **Market Events**: Realistic market crashes, volatility spikes, and targeted bad news scenarios
+
+### 🕵️ **Fraud Detection Training** (NEW)
+- **Insider Trading Scenarios**: Pre-announcement coordinated trading patterns
+- **Wash Trading Rings**: Circular trading between related accounts to inflate volume
+- **Pump & Dump Schemes**: Multi-phase coordinated price manipulation
+- **Investigation Framework**: Complete guide with Elasticsearch queries for analysts
+
+All content uses Google's Gemini AI for realistic language and automatically ingests into Elasticsearch with proper index mappings and semantic search capabilities.
 
 ## 🚀 Quick Start
 
 Get running in 30 seconds:
 
-### 1. Install
+### 1. Install & Setup
 ```bash
 git clone https://github.com/yourusername/synthetic-financial-data.git
 cd synthetic-financial-data
 pip install -r requirements.txt
+
+# Set Elasticsearch credentials
+export ES_ENDPOINT_URL="your-elasticsearch-endpoint"
+export ES_API_KEY="your-elasticsearch-api-key"
+
+# Optional: Set Gemini API key for generating new data
+export GEMINI_API_KEY="your-gemini-api-key"  
 ```
 
-### 2. Load Sample Data (20 seconds)
+### 2. Interactive Control Panel (Recommended)
 ```bash
-# Load all existing data - accounts, holdings, news, reports
-python3 load_all_data.py
-```
-
-### 3. Update Timestamps for Demo
-```bash
-# Make data appear from 4 hours ago (perfect for demos)
-python3 update_es_timestamps.py --offset -4
-
-# Or make it current
-python3 update_es_timestamps.py
-```
-
-### 4. Optional: Interactive Setup
-```bash
-# Full control panel with menus and configuration
+# Launch interactive menu system with live progress dashboard
 python3 control.py
 ```
 
-**That's it!** You now have realistic financial data in Elasticsearch ready for queries, dashboards, and demos.
+**Interactive Options:**
+- **🚀 Quick Start**: Generate all data with defaults (7K accounts, 550+ articles, 262K+ trades)
+- **⚙️ Custom Generation**: Configure specific data volumes and types
+- **💥 Trigger Events**: Market crashes, bad news, or fraud scenarios
+- **🗄️ Manage Indices**: Elasticsearch index management
+- **📊 Check Status**: System status and data statistics
+
+### 3. Alternative: Load Existing Data Only
+```bash
+# Load all pre-generated data (no AI key required)
+python3 load_fresh_data.py
+
+# Or use the streamlined loader
+python3 load_all_data.py
+```
+
+**That's it!** You now have realistic financial data with trading activity and fraud scenarios in Elasticsearch, ready for analysis training and demos.
 
 ## 💡 Common Use Cases
 
-### 📊 Basic Data Loading (No AI Key Needed)
-Most common scenario - you have the generated data files and want them in Elasticsearch:
+### 📊 Data Loading (No AI Key Needed)
+Load pre-generated data files into Elasticsearch:
 
 ```bash
-# Load everything (recommended)
-python3 load_all_data.py
+# Interactive mode - recommended
+python3 control.py
+# Select: 🚀 Quick Start or 🗄️ Manage Indices
 
-# Load specific indices only  
-python3 load_specific_indices.py --holdings --news
+# Command line mode
+python3 load_fresh_data.py                    # Load recent data files
+python3 load_all_data.py                      # Load all existing data
 
-# Quick demo subset (5K holdings instead of 122K)
-python3 load_demo_subset.py
-
-# Reload for clean state (delete + reload)  
-python3 quick_reload.py --all
+# Direct script execution  
+python3 scripts/generate_holdings_accounts.py  # Just accounts & holdings
 ```
 
 ### 🤖 Generate New Data (Requires Gemini API Key)
-Set your API key first:
+Create fresh synthetic data with AI-generated content:
+
 ```bash
+# Set API key
 export GEMINI_API_KEY="your_key_here"
+
+# Interactive generation (recommended)
+python3 control.py
+# Select: ⚙️ Custom Generation
+
+# Command line generation
+python3 control.py --quick-start                              # Full dataset
+python3 control.py --custom --accounts --num-accounts 1000    # Custom volumes
 ```
 
-Then generate:
+### 🎭 Market Events & Scenarios
+Create realistic market scenarios for demos and training:
+
+#### Traditional Market Events
 ```bash
-# Generate everything with defaults (7K accounts, 500+ articles)
-python3 control.py --quick-start
+# Interactive mode
+python3 control.py → 💥 Trigger Events
 
-# Custom generation with specific volumes
-python3 control.py --custom --accounts --num-accounts 1000
+# Command line mode
+python3 control.py --trigger-event market_crash    # Broad market selloff
+python3 control.py --trigger-event bad_news        # Targeted company events
+python3 control.py --trigger-event volatility      # Market volatility spike
 ```
 
-### 🎭 Market Event Demos (The Cool Stuff)
-Create realistic market scenarios for compelling demos and testing:
+#### 🕵️ Fraud Scenarios (NEW)
+Generate sophisticated fraud patterns for analyst training:
 
-#### Market Crash Scenario
-Simulate a broad market selloff:
 ```bash
-python3 control.py --trigger-event market_crash
+# Interactive mode
+python3 control.py → 💥 Trigger Events → Select fraud scenario
+
+# Command line mode  
+python3 control.py --trigger-event insider_trading    # Pre-announcement trading
+python3 control.py --trigger-event wash_trading       # Circular trading rings
+python3 control.py --trigger-event pump_and_dump      # Price manipulation
+
+# Direct script execution with custom parameters
+python3 scripts/generate_insider_trading.py --num-scenarios 5 --elasticsearch
+python3 scripts/generate_wash_trading.py --num-scenarios 3 --elasticsearch  
+python3 scripts/generate_pump_and_dump.py --num-scenarios 2 --elasticsearch
 ```
-**What it creates:**
-- Negative news about SPY, QQQ, and major ETFs
-- Reports covering market-wide economic impact
-- Economic uncertainty and inflation themes  
-- Double the usual article volume for maximum impact
+
+**Fraud Scenarios Include:**
+- **Insider Trading**: 5-15 accounts coordinate trades 12-48 hours before news announcements
+- **Wash Trading**: 2-4 related accounts circular trade with minimal price spreads
+- **Pump & Dump**: 8-20 accounts execute multi-phase price manipulation over 5-10 days
 
 #### Bad News Event
 Target specific companies with negative events:
@@ -394,7 +437,92 @@ Company earnings report or analyst note:
 }
 ```
 
+### financial_trades (NEW)
+Realistic trading activity with fraud scenario support:
+```json
+{
+  "trade_id": "TRD-20250604-ecc5e298",
+  "account_id": "ACC00000-5506",
+  "symbol": "BAC",
+  "trade_type": "buy",
+  "order_type": "market", 
+  "order_status": "executed",
+  "quantity": 1978.0,
+  "execution_price": 178.01,
+  "trade_cost": 352103.78,
+  "execution_timestamp": "2025-06-04T11:15:43",
+  "last_updated": "2025-09-02T13:01:37",
+  "scenario_type": "insider_trading",     // Only for fraud scenarios
+  "pump_scheme_id": "SCHEME-12345678"     // Links related fraud trades
+}
+```
+
 </details>
+
+## 🕵️ Fraud Investigation Training
+
+The system generates realistic fraud scenarios mixed with legitimate trading data for analyst training:
+
+### Investigation Resources
+- **📋 [Fraud Investigation Guide](fraud_investigation_guide.md)** - Complete investigation techniques and Elasticsearch queries
+- **🔍 [Example Queries](semantic_search_examples.md)** - Semantic search examples for finding fraud patterns
+- **📊 Generated Scenarios** - Pre-built fraud patterns ready for discovery
+
+### Sample Investigation Queries
+
+#### Find Insider Trading Patterns
+```elasticsearch
+GET /financial_trades/_search
+{
+  "query": {
+    "bool": {
+      "must": [
+        {"term": {"scenario_type": "insider_trading"}},
+        {"range": {"execution_timestamp": {"gte": "2025-07-01"}}}
+      ]
+    }
+  },
+  "aggs": {
+    "insider_schemes": {
+      "terms": {"field": "scenario_symbol"},
+      "aggs": {
+        "coordinated_accounts": {"cardinality": {"field": "account_id"}},
+        "timeline": {
+          "date_histogram": {
+            "field": "execution_timestamp",
+            "fixed_interval": "1h"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+#### Detect Wash Trading Rings
+```elasticsearch
+GET /financial_trades/_search
+{
+  "query": {"exists": {"field": "wash_ring_id"}},
+  "aggs": {
+    "wash_rings": {
+      "terms": {"field": "wash_ring_id"},
+      "aggs": {
+        "participants": {"terms": {"field": "account_id"}},
+        "symbols": {"terms": {"field": "symbol"}},
+        "trade_pairs": {
+          "terms": {"field": "counterpart_account", "size": 10}
+        }
+      }
+    }
+  }
+}
+```
+
+### Investigation Training Scenarios
+1. **🕵️ Insider Trading**: Find accounts that traded TSLA 36 hours before breakthrough announcement
+2. **🔄 Wash Trading**: Discover 4 Texas accounts circular trading AAPL with 0.15% spreads
+3. **🎯 Pump & Dump**: Trace NVDA price manipulation from accumulation through dump phases
 
 ## 🤝 Contributing
 

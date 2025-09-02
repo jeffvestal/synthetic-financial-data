@@ -1,0 +1,293 @@
+{
+  "volume_anomalies": [
+    {
+      "account_id": "ACC01075-daca",
+      "risk_profile": "High",
+      "portfolio_value": 12051799.25,
+      "total_volume": 47012.0,
+      "trade_count": 51,
+      "avg_trade_size": 921.8039215686274,
+      "total_value": 17831895.240234375,
+      "unique_symbols": 38,
+      "volume_ratio": 156.03313339292473,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC00315-ce5b",
+      "risk_profile": "High",
+      "portfolio_value": 13142480.65,
+      "total_volume": 45987.0,
+      "trade_count": 39,
+      "avg_trade_size": 1179.1538461538462,
+      "total_value": 20769953.224365234,
+      "unique_symbols": 38,
+      "volume_ratio": 139.9644442314625,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC06448-5ae4",
+      "risk_profile": "High",
+      "portfolio_value": 404173.31,
+      "total_volume": 45903.0,
+      "trade_count": 48,
+      "avg_trade_size": 956.3125,
+      "total_value": 24008888.609375,
+      "unique_symbols": 44,
+      "volume_ratio": 4542.902647381638,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC00004-a371",
+      "risk_profile": "High",
+      "portfolio_value": 6554990.68,
+      "total_volume": 45803.0,
+      "trade_count": 52,
+      "avg_trade_size": 880.8269230769231,
+      "total_value": 17702467.341796875,
+      "unique_symbols": 44,
+      "volume_ratio": 279.5000160091761,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC06039-1d12",
+      "risk_profile": "High",
+      "portfolio_value": 14288424.94,
+      "total_volume": 45660.0,
+      "trade_count": 49,
+      "avg_trade_size": 931.8367346938776,
+      "total_value": 26950392.389648438,
+      "unique_symbols": 46,
+      "volume_ratio": 127.82374598105983,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC00494-be47",
+      "risk_profile": "High",
+      "portfolio_value": 10958414.08,
+      "total_volume": 45351.0,
+      "trade_count": 48,
+      "avg_trade_size": 944.8125,
+      "total_value": 25404453.201171875,
+      "unique_symbols": 42,
+      "volume_ratio": 165.5385520894644,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC04645-db25",
+      "risk_profile": "High",
+      "portfolio_value": 12073129.31,
+      "total_volume": 42859.0,
+      "trade_count": 46,
+      "avg_trade_size": 931.7173913043479,
+      "total_value": 24479792.516601562,
+      "unique_symbols": 40,
+      "volume_ratio": 141.99798212879406,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC03250-c505",
+      "risk_profile": "High",
+      "portfolio_value": 18435904.93,
+      "total_volume": 42779.0,
+      "trade_count": 46,
+      "avg_trade_size": 929.9782608695652,
+      "total_value": 20400775.359375,
+      "unique_symbols": 42,
+      "volume_ratio": 92.81670775029322,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC06901-dadf",
+      "risk_profile": "High",
+      "portfolio_value": 27393150.83,
+      "total_volume": 42466.0,
+      "trade_count": 43,
+      "avg_trade_size": 987.5813953488372,
+      "total_value": 18839483.732421875,
+      "unique_symbols": 39,
+      "volume_ratio": 62.009661120826976,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC02612-4589",
+      "risk_profile": "High",
+      "portfolio_value": 16722661.39,
+      "total_volume": 42317.0,
+      "trade_count": 47,
+      "avg_trade_size": 900.3617021276596,
+      "total_value": 20688043.19921875,
+      "unique_symbols": 41,
+      "volume_ratio": 101.22073039236489,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC04893-65c0",
+      "risk_profile": "High",
+      "portfolio_value": 7850627.98,
+      "total_volume": 42138.0,
+      "trade_count": 42,
+      "avg_trade_size": 1003.2857142857143,
+      "total_value": 22933280.634277344,
+      "unique_symbols": 36,
+      "volume_ratio": 214.698748214025,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC02532-c947",
+      "risk_profile": "High",
+      "portfolio_value": 4333207.85,
+      "total_volume": 41770.0,
+      "trade_count": 44,
+      "avg_trade_size": 949.3181818181819,
+      "total_value": 23203995.58203125,
+      "unique_symbols": 39,
+      "volume_ratio": 385.5803962877063,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC03049-5e4a",
+      "risk_profile": "High",
+      "portfolio_value": 5637937.06,
+      "total_volume": 41455.0,
+      "trade_count": 40,
+      "avg_trade_size": 1036.375,
+      "total_value": 24443701.9296875,
+      "unique_symbols": 37,
+      "volume_ratio": 294.1146703755505,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC01443-783e",
+      "risk_profile": "High",
+      "portfolio_value": 19149658.37,
+      "total_volume": 41440.0,
+      "trade_count": 44,
+      "avg_trade_size": 941.8181818181819,
+      "total_value": 21652842.520629883,
+      "unique_symbols": 37,
+      "volume_ratio": 86.56029094476216,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC05632-fdb4",
+      "risk_profile": "High",
+      "portfolio_value": 21056321.28,
+      "total_volume": 40824.0,
+      "trade_count": 46,
+      "avg_trade_size": 887.4782608695652,
+      "total_value": 21852501.390625,
+      "unique_symbols": 42,
+      "volume_ratio": 77.55200817300599,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC01723-ba02",
+      "risk_profile": "High",
+      "portfolio_value": 15139658.94,
+      "total_volume": 40583.0,
+      "trade_count": 42,
+      "avg_trade_size": 966.2619047619048,
+      "total_value": 27105623.436523438,
+      "unique_symbols": 41,
+      "volume_ratio": 107.22302308350415,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC00513-a9b6",
+      "risk_profile": "High",
+      "portfolio_value": 596334.96,
+      "total_volume": 40482.0,
+      "trade_count": 42,
+      "avg_trade_size": 963.8571428571429,
+      "total_value": 19225190.57421875,
+      "unique_symbols": 40,
+      "volume_ratio": 2715.386667922337,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC00722-fae3",
+      "risk_profile": "High",
+      "portfolio_value": 11996795.66,
+      "total_volume": 40447.0,
+      "trade_count": 41,
+      "avg_trade_size": 986.5121951219512,
+      "total_value": 20124691.529296875,
+      "unique_symbols": 37,
+      "volume_ratio": 134.85934459935612,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC06080-6e31",
+      "risk_profile": "High",
+      "portfolio_value": 5810440.87,
+      "total_volume": 40274.0,
+      "trade_count": 44,
+      "avg_trade_size": 915.3181818181819,
+      "total_value": 26507483.811523438,
+      "unique_symbols": 40,
+      "volume_ratio": 277.25262781996094,
+      "suspicion_score": 100
+    },
+    {
+      "account_id": "ACC04011-fe3f",
+      "risk_profile": "High",
+      "portfolio_value": 12693489.43,
+      "total_volume": 39360.0,
+      "trade_count": 44,
+      "avg_trade_size": 894.5454545454545,
+      "total_value": 24344181.205078125,
+      "unique_symbols": 39,
+      "volume_ratio": 124.03208815686547,
+      "suspicion_score": 100
+    }
+  ],
+  "price_manipulation": [],
+  "behavior_anomalies": [],
+  "coordination_patterns": [
+    {
+      "symbol": "CORP_BOND_MAT_H",
+      "timestamp": "2025-08-26T20:30:00.000Z",
+      "account_count": 4,
+      "total_volume": 1400.0,
+      "total_value": 123646.0,
+      "trade_types": {
+        "sell": 4
+      },
+      "coordination_score": 33,
+      "account_details": [
+        {
+          "account_id": "ACC00567-a43f",
+          "trade_type": "sell",
+          "quantity": 1000.0,
+          "price": 88.31
+        },
+        {
+          "account_id": "ACC01296-e973",
+          "trade_type": "sell",
+          "quantity": 100.0,
+          "price": 88.31
+        },
+        {
+          "account_id": "ACC02591-2eda",
+          "trade_type": "sell",
+          "quantity": 100.0,
+          "price": 88.31
+        },
+        {
+          "account_id": "ACC05997-ad57",
+          "trade_type": "sell",
+          "quantity": 200.0,
+          "price": 88.37
+        }
+      ]
+    }
+  ],
+  "summary_stats": {
+    "analysis_time_seconds": 12.442507028579712,
+    "total_alerts": 21,
+    "volume_anomaly_alerts": 20,
+    "price_manipulation_alerts": 0,
+    "behavior_anomaly_alerts": 0,
+    "coordination_alerts": 1
+  }
+}

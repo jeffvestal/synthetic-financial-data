@@ -23,7 +23,7 @@ os.environ['PARALLEL_BULK_WORKERS'] = str(PARALLEL_WORKERS)
 scripts_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'scripts')
 sys.path.insert(0, scripts_dir)
 
-from common_utils import create_elasticsearch_client, ingest_data_to_es
+from common_utils import create_elasticsearch_client, ingest_data_to_es, wait_for_inference_endpoint_if_needed
 
 def load_fresh_data(hours_threshold=1):
     """Load only recently modified data files."""
@@ -89,6 +89,16 @@ def load_fresh_data(hours_threshold=1):
     
     print(f"\n📊 Loading {len(fresh_files)} fresh indices ({total_docs:,} documents)")
     print("=" * 60)
+    
+    # Check inference endpoint if semantic indices are present
+    index_names = [idx[1] for idx in fresh_files]
+    endpoint_ready = wait_for_inference_endpoint_if_needed(index_names)
+    
+    # Filter out semantic indices if endpoint not ready
+    if not endpoint_ready:
+        semantic_indices = ['financial_news', 'financial_reports']
+        fresh_files = [idx for idx in fresh_files if idx[1] not in semantic_indices]
+        print(f"📊 Adjusted: {len(fresh_files)} indices ({sum(idx[4] for idx in fresh_files):,} documents)")
     
     # Load fresh files
     overall_start = time.time()

@@ -29,6 +29,7 @@ from common_utils import create_elasticsearch_client, ingest_data_to_es
 # Index configurations
 INDEX_CONFIG = {
     'accounts': ('generated_data/generated_accounts.jsonl', 'financial_accounts', 'account_id'),
+    'trades': ('generated_data/financial_trades.jsonl', 'financial_trades', 'trade_id'),  # NEW
     'holdings': ('generated_data/generated_holdings.jsonl', 'financial_holdings', 'holding_id'),
     'assets': ('generated_data/generated_asset_details.jsonl', 'financial_asset_details', 'symbol'),
     'news': ('generated_data/generated_news.jsonl', 'financial_news', 'article_id'),
@@ -135,6 +136,7 @@ def quick_reload(indices_to_reload):
 def main():
     parser = argparse.ArgumentParser(description='Quick reload indices (delete + reload)')
     parser.add_argument('--accounts', action='store_true', help='Reload accounts')
+    parser.add_argument('--trades', action='store_true', help='Reload trades')
     parser.add_argument('--holdings', action='store_true', help='Reload holdings')
     parser.add_argument('--assets', action='store_true', help='Reload assets')
     parser.add_argument('--news', action='store_true', help='Reload news')
@@ -149,6 +151,7 @@ def main():
     else:
         indices_to_reload = []
         if args.accounts: indices_to_reload.append('accounts')
+        if args.trades: indices_to_reload.append('trades')
         if args.holdings: indices_to_reload.append('holdings')
         if args.assets: indices_to_reload.append('assets')
         if args.news: indices_to_reload.append('news')

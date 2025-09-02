@@ -332,7 +332,20 @@ class TaskExecutor:
             # Add event-specific arguments for trigger events
             if task_name == 'trigger_event':
                 event_type = task.get('config', {}).get('event_type', 'bad_news')
-                cmd.extend(['--event-type', event_type])
+                
+                # Handle fraud scenarios with different scripts
+                if event_type == 'insider_trading':
+                    cmd = [sys.executable, 'scripts/generate_insider_trading.py']
+                    cmd.extend(['--num-scenarios', '3', '--elasticsearch'])
+                elif event_type == 'wash_trading':
+                    cmd = [sys.executable, 'scripts/generate_wash_trading.py']
+                    cmd.extend(['--num-scenarios', '2', '--elasticsearch'])
+                elif event_type == 'pump_and_dump':
+                    cmd = [sys.executable, 'scripts/generate_pump_and_dump.py']
+                    cmd.extend(['--num-scenarios', '1', '--elasticsearch'])
+                else:
+                    # Traditional market events (bad_news, market_crash, volatility)
+                    cmd.extend(['--event-type', event_type])
             
             # Set environment variables if needed
             env = os.environ.copy()
@@ -572,7 +585,20 @@ class TaskExecutor:
             # Add event-specific arguments for trigger events
             if task_name == 'trigger_event':
                 event_type = task.get('config', {}).get('event_type', 'bad_news')
-                cmd.extend(['--event-type', event_type])
+                
+                # Handle fraud scenarios with different scripts
+                if event_type == 'insider_trading':
+                    cmd = [sys.executable, 'scripts/generate_insider_trading.py']
+                    cmd.extend(['--num-scenarios', '3', '--elasticsearch'])
+                elif event_type == 'wash_trading':
+                    cmd = [sys.executable, 'scripts/generate_wash_trading.py']
+                    cmd.extend(['--num-scenarios', '2', '--elasticsearch'])
+                elif event_type == 'pump_and_dump':
+                    cmd = [sys.executable, 'scripts/generate_pump_and_dump.py']
+                    cmd.extend(['--num-scenarios', '1', '--elasticsearch'])
+                else:
+                    # Traditional market events (bad_news, market_crash, volatility)
+                    cmd.extend(['--event-type', event_type])
             
             # Set environment variables if needed
             env = os.environ.copy()
