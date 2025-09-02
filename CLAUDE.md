@@ -62,6 +62,26 @@ synthetic-financial-data/
 │   ├── specific_news.txt         # Company-specific news template  
 │   ├── specific_report.txt       # Company report template
 │   └── thematic_sector_report.txt # Thematic industry report template
+├── tests/                         # 🧪 Comprehensive testing framework
+│   ├── conftest.py                # Shared fixtures and test configuration
+│   ├── unit/                      # Unit tests (fast, isolated)
+│   │   ├── test_setup.py          # Enhanced setup.py functionality tests
+│   │   ├── test_config_manager.py # Configuration management tests
+│   │   └── test_index_manager.py  # Elasticsearch index operations tests
+│   ├── integration/               # Integration tests (real dependencies)
+│   │   └── test_data_generation_workflow.py # End-to-end workflow tests
+│   ├── functional/                # Functional/system tests
+│   │   ├── test_semantic_search.py # Comprehensive semantic search testing
+│   │   ├── test_timestamp_update.py # Timestamp management tests
+│   │   └── test_serverless_compatibility.py # Serverless ES support tests
+│   └── fixtures/                  # Test data and mock responses
+├── .github/workflows/             # 🚦 CI/CD automation
+│   └── test.yml                   # Comprehensive GitHub Actions workflow
+├── setup.py                       # 🛠️ Enhanced automated setup with credential management
+├── run_tests.py                   # 🧪 Comprehensive test runner script
+├── pytest.ini                     # 🔧 Pytest configuration with coverage and markers
+├── requirements-test.txt           # 📦 Testing framework dependencies
+├── TESTING.md                     # 📚 Complete testing framework documentation
 └── generated_data/               # 📊 Output directory (ignored by git for large files)
     ├── generated_accounts.jsonl          # 7,000+ customer accounts
     ├── generated_holdings.jsonl          # 70K-175K portfolio holdings
@@ -87,18 +107,114 @@ synthetic-financial-data/
 ### Core Components
 
 - **🎮 Interactive Control Script** (`control.py`): Main interface with 8 menu options including Quick Start, Custom Generation, Index Management
+- **🛠️ Enhanced Setup System** (`setup.py`): Automated setup with virtual environment creation, dependency installation, and interactive credential configuration
 - **🗄️ Index Management System** (`lib/index_manager.py`): Comprehensive ES index management with status checking, creation, deletion, and mapping validation
 - **🔧 Configuration Hub** (`scripts/config.py`): Centralized settings with file paths, API configuration, and generation parameters
 - **📊 Task Executor** (`lib/task_executor.py`): Advanced execution engine with live progress dashboard and concurrent task monitoring  
 - **🤖 AI Integration** (`common_utils.py`): Gemini API integration with retry logic and error handling
 - **💾 Symbol Management** (`symbol_manager.py`): Advanced symbol filtering by sector, index membership, and random selection
 - **🕐 Timestamp Management** (`lib/timestamp_updater.py`): Updates document timestamps in Elasticsearch or data files to current time with optional offsets
+- **🧪 Testing Framework** (`tests/`, `run_tests.py`): Comprehensive pytest-based testing with unit, integration, and functional tests
+- **🚦 CI/CD Pipeline** (`.github/workflows/test.yml`): Automated testing across multiple Python versions and platforms
 - **📈 Generation Scripts**:
   - `generate_holdings_accounts.py`: Creates accounts, holdings, and asset details
   - `generate_reports_and_news_new.py`: Generates news articles and financial reports
   - `trigger_bad_news_event.py`: Creates controlled negative market events for demos
 
 ## Development Commands
+
+### 🛠️ Enhanced Setup Process (New)
+
+**Automated Setup with Credential Configuration:**
+
+```bash
+# One-command setup with interactive credential configuration
+python3 setup.py
+```
+
+The enhanced setup script provides:
+- ✅ **Virtual Environment**: Creates and manages venv automatically
+- ✅ **Dependency Installation**: Installs all required packages with proper versions
+- ✅ **Interactive Credential Setup**: Prompts for API keys with helpful guidance
+- ✅ **Environment Validation**: Tests Elasticsearch connectivity and validates setup
+- ✅ **Secure Configuration**: Creates `.env` file (excluded from git) with credentials
+- ✅ **Context-Aware Next Steps**: Provides relevant commands based on your configuration
+- ✅ **Cross-Platform Support**: Works on Windows, macOS, and Linux
+
+**Setup Process Flow:**
+1. Python version check (3.8+ required)
+2. Virtual environment creation (if needed)
+3. Pip upgrade and dependency installation
+4. **NEW**: Optional interactive credential configuration
+5. **NEW**: Elasticsearch connection testing (if credentials provided)
+6. **NEW**: Enhanced next steps with personalized commands
+
+**Credential Configuration Options:**
+- **Interactive Mode**: Guided prompts for each API key with explanations
+- **Decline Option**: Skip credential setup and get environment variable names
+- **Validation**: Automatic Elasticsearch connection testing
+- **Security**: All credentials written to `.env` (git-ignored)
+
+### 🧪 Testing Framework (New)
+
+**Comprehensive Testing Suite:**
+
+```bash
+# Install testing dependencies
+pip install -r requirements-test.txt
+
+# Quick unit tests (fastest feedback)
+python3 run_tests.py --unit
+
+# Full test suite (recommended for CI)
+python3 run_tests.py --all
+
+# Include external dependencies (ES, Gemini API)
+python3 run_tests.py --all --external
+
+# Code quality checks
+python3 run_tests.py --quality
+
+# Security scans
+python3 run_tests.py --security
+
+# Specific test file
+python3 run_tests.py --specific tests/unit/test_setup.py
+
+# With coverage reporting
+python3 run_tests.py --unit --coverage
+```
+
+**Test Categories:**
+- **🔬 Unit Tests** (`tests/unit/`): 75+ tests covering core components
+  - `test_setup.py`: Enhanced setup.py functionality (25+ tests)
+  - `test_config_manager.py`: Configuration management (20+ tests) 
+  - `test_index_manager.py`: Elasticsearch operations (30+ tests)
+
+- **🔗 Integration Tests** (`tests/integration/`): End-to-end workflows
+  - `test_data_generation_workflow.py`: Complete data generation pipelines
+  - Real Elasticsearch testing with automatic cleanup
+  - Gemini API integration testing (when keys available)
+
+- **⚡ Functional Tests** (`tests/functional/`): System-level testing
+  - `test_semantic_search.py`: Comprehensive ELSER semantic search testing (500+ lines)
+  - `test_timestamp_update.py`: Timestamp management and batch operations
+  - `test_serverless_compatibility.py`: Elasticsearch serverless support
+
+**Testing Features:**
+- **Smart Dependencies**: Automatically excludes tests requiring unavailable services
+- **Comprehensive Mocking**: Realistic ES client, Gemini API, and file system mocks
+- **Performance Testing**: Benchmarking and load testing capabilities
+- **Security Scanning**: Built-in vulnerability and security checks
+- **Cross-Platform CI**: GitHub Actions testing on multiple OS and Python versions
+- **Coverage Reports**: HTML and terminal coverage reporting with 85%+ target
+
+**CI/CD Pipeline:**
+- **Multi-Version Testing**: Python 3.8, 3.9, 3.10, 3.11
+- **Multi-Platform**: Ubuntu, macOS, Windows
+- **Quality Gates**: Code formatting, linting, security scans
+- **Performance Monitoring**: Benchmark tracking and regression detection
+- **Automatic Reports**: Coverage uploads and notification system
 
 ### 🚀 Fast Loading Scripts (Recommended for Google Colab)
 
@@ -597,20 +713,38 @@ python3 find_optimal_settings.py
    - `DEMO_CONFIG`: Market simulation parameters and volatility settings
 
 2. **`elasticsearch/index_mappings.json`** - Complete index mappings:
-   - All 5 index definitions with settings and field mappings
+   - All 6 index definitions with settings and field mappings (including trades)
    - Semantic search field configurations
    - Lookup mode settings for performance
 
-3. **`requirements.txt`** - Python dependencies:
+3. **`requirements.txt`** - Core Python dependencies:
    - Core: `google-generativeai`, `elasticsearch`, `faker`, `python-dotenv`
    - UI: `rich`, `tqdm`, `colorama`
 
-4. **`.env`** - Environment variables (not tracked by git):
+4. **`requirements-test.txt`** - Testing framework dependencies:
+   - Testing: `pytest`, `pytest-cov`, `pytest-mock`, `pytest-asyncio`
+   - Quality: `black`, `isort`, `flake8`, `mypy`
+   - Security: `safety`, `bandit`
+   - Utilities: `responses`, `freezegun`, `factory-boy`
+
+5. **`pytest.ini`** - Testing framework configuration:
+   - Test discovery patterns and paths
+   - Coverage reporting settings (HTML + terminal)
+   - Test markers for categorization (unit, integration, functional)
+   - Warning filters and strict marker validation
+
+6. **`.env`** - Environment variables (not tracked by git):
    ```bash
    GEMINI_API_KEY=your_key_here
    ES_API_KEY=your_es_key_here  
    ES_ENDPOINT_URL=https://localhost:9200
    ```
+
+7. **`.github/workflows/test.yml`** - CI/CD pipeline configuration:
+   - Multi-version Python testing (3.8-3.11)
+   - Cross-platform testing (Ubuntu, macOS, Windows)
+   - Automated code quality and security scanning
+   - Coverage reporting and performance benchmarking
 
 ## Event System
 
@@ -690,7 +824,9 @@ python3 scripts/trigger_bad_news_event.py --event-type market_crash
 2. Update `config.py` with new index name and generation settings
 3. Create generation function in appropriate script
 4. Add UI options to `lib/menu_system.py`
-5. **Performance**: Consider adding direct loading script for large datasets
+5. **NEW**: Create unit tests for new functionality in `tests/unit/`
+6. **NEW**: Add integration tests in `tests/integration/` for end-to-end workflows
+7. **Performance**: Consider adding direct loading script for large datasets
 
 **Modifying Symbols:**
 - Edit `scripts/symbols_config.py` to add/remove stocks, ETFs, or bonds
@@ -754,6 +890,47 @@ def is_notebook():
 if is_notebook():
     # Use direct scripts, avoid interactive prompts
     use_non_interactive_mode = True
+```
+
+**Testing Development Pattern:**
+```python
+# Test-driven development pattern for new features
+class TestNewFeature:
+    """Test new feature functionality."""
+    
+    @pytest.fixture
+    def setup_test_data(self):
+        """Create test data for feature testing."""
+        return create_sample_data()
+    
+    @pytest.mark.unit
+    def test_feature_basic_functionality(self, setup_test_data):
+        """Test basic feature operation."""
+        result = new_feature_function(setup_test_data)
+        assert result is not None
+        assert result.status == 'success'
+    
+    @pytest.mark.parametrize("input,expected", [
+        ("valid_input", True),
+        ("invalid_input", False),
+        ("edge_case", None)
+    ])
+    def test_feature_edge_cases(self, input, expected):
+        """Test feature with various inputs."""
+        result = new_feature_function(input)
+        assert result == expected
+    
+    @pytest.mark.integration
+    def test_feature_integration(self, mock_elasticsearch_client):
+        """Test feature integration with external systems."""
+        with patch('module.create_elasticsearch_client', return_value=mock_elasticsearch_client):
+            result = integrated_feature_function()
+            assert result.success is True
+
+# Always run tests during development
+def run_development_tests():
+    """Run relevant tests during development."""
+    subprocess.run(['python', 'run_tests.py', '--unit', '--verbose'])
 ```
 
 **Bulk Operation Pattern:**
