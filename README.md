@@ -31,7 +31,24 @@ All content uses Google's Gemini AI for realistic language and automatically ing
 
 Get running in 30 seconds:
 
-### 1. Install & Setup
+### 1. Automated Setup (Recommended)
+```bash
+git clone https://github.com/yourusername/synthetic-financial-data.git
+cd synthetic-financial-data
+
+# Run the automated setup - creates venv, installs dependencies, configures credentials
+python3 setup.py
+```
+
+The setup script will:
+- ✅ Create and activate a virtual environment
+- ✅ Install all required dependencies  
+- ✅ Prompt for API credentials (optional)
+- ✅ Create `.env` file with your settings
+- ✅ Test Elasticsearch connection
+- ✅ Show you exactly what to run next
+
+### 1. Alternative: Manual Setup
 ```bash
 git clone https://github.com/yourusername/synthetic-financial-data.git
 cd synthetic-financial-data
@@ -178,8 +195,31 @@ python3 update_es_timestamps.py --indices reports --offset 0
 ```
 
 ### 📓 Jupyter Notebook / Google Colab
+
+#### Option 1: Automated Setup (Recommended)
 ```python
-# Set credentials
+# Clone and setup in one go
+!git clone https://github.com/yourusername/synthetic-financial-data.git
+%cd synthetic-financial-data
+
+# Automated setup - but credential prompts won't work in notebooks
+# So decline and set environment variables manually
+!python3 setup.py  # When prompted, choose 'n' to decline credential setup
+
+# Then set credentials manually
+import os
+os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'  
+os.environ['ES_API_KEY'] = 'your_elasticsearch_key'
+os.environ['GEMINI_API_KEY'] = 'your_gemini_key'  # optional
+
+# Load or generate data
+!python3 load_all_data.py  # Load existing data (no Gemini key needed)
+!python3 control.py --quick-start --non-interactive  # Generate new data
+```
+
+#### Option 2: Manual Setup
+```python
+# Set credentials manually
 import os
 os.environ['ES_ENDPOINT_URL'] = 'https://localhost:9200'  
 os.environ['ES_API_KEY'] = 'your_elasticsearch_key'
@@ -231,7 +271,21 @@ python3 control.py
 
 ## ⚙️ Setup & Configuration
 
-### API Keys
+### Automated Setup (Recommended)
+```bash
+# One-command setup with interactive credential configuration
+python3 setup.py
+```
+
+The setup script handles everything automatically:
+- Creates virtual environment if needed
+- Installs all dependencies  
+- Prompts for API credentials with helpful guidance
+- Creates `.env` file (securely excluded from git)
+- Tests Elasticsearch connection
+- Shows context-aware next steps
+
+### Manual API Key Configuration
 ```bash
 # Required for generating new data
 export GEMINI_API_KEY="your_google_gemini_key"
@@ -240,9 +294,10 @@ export GEMINI_API_KEY="your_google_gemini_key"
 export ES_ENDPOINT_URL="https://localhost:9200"
 export ES_API_KEY="your_elasticsearch_key" 
 
-# Or create .env file
+# Or create .env file manually
 echo "GEMINI_API_KEY=your_key" >> .env
 echo "ES_API_KEY=your_es_key" >> .env
+echo "ES_ENDPOINT_URL=https://localhost:9200" >> .env
 ```
 
 ### What Needs What?
