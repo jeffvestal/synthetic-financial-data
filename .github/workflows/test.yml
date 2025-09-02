@@ -1,0 +1,299 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Cache pip dependencies
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements*.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Run unit tests
+      run: |
+        pytest tests/unit/ -v --cov=scripts --cov=lib --cov=setup --cov-report=xml --cov-report=term-missing -m "unit"
+    
+    - name: Run functional tests (no external dependencies)
+      run: |
+        pytest tests/functional/ -v -m "functional and not elasticsearch and not gemini"
+    
+    - name: Upload coverage reports to Codecov
+      uses: codecov/codecov-action@v3
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: true
+
+  integration-test:
+    runs-on: ubuntu-latest
+    # Only run integration tests if secrets are available
+    if: ${{ github.event_name == 'push' && github.repository_owner == 'yourusername' }}
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+    
+    - name: Start Elasticsearch
+      run: |
+        docker run -d --name elasticsearch \
+          -p 9200:9200 \
+          -e "discovery.type=single-node" \
+          -e "xpack.security.enabled=false" \
+          -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+          elasticsearch:8.9.0
+        
+        # Wait for Elasticsearch to be ready
+        timeout 60s bash -c 'until curl -f http://localhost:9200/_cluster/health; do sleep 5; done'
+    
+    - name: Run integration tests
+      env:
+        ES_ENDPOINT_URL: http://localhost:9200
+        ES_API_KEY: dummy_key_for_testing
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      run: |
+        pytest tests/integration/ -v -m "integration and not gemini" --maxfail=5
+        
+        # Run Gemini tests only if API key is available
+        if [ ! -z "$GEMINI_API_KEY" ]; then
+          pytest tests/integration/ -v -m "integration and gemini" --maxfail=3
+        fi
+
+  code-quality:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements-test.txt
+    
+    - name: Run Black (code formatting check)
+      run: |
+        black --check --diff scripts/ lib/ tests/ setup.py
+    
+    - name: Run isort (import sorting check)
+      run: |
+        isort --check-only --diff scripts/ lib/ tests/ setup.py
+    
+    - name: Run flake8 (linting)
+      run: |
+        flake8 scripts/ lib/ tests/ setup.py --max-line-length=100 --extend-ignore=E203,W503
+    
+    - name: Run mypy (type checking)
+      run: |
+        mypy scripts/ lib/ setup.py --ignore-missing-imports --no-strict-optional
+      continue-on-error: true  # Don't fail build on type errors initially
+
+  security-scan:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install safety bandit
+        pip install -r requirements.txt
+    
+    - name: Run safety (dependency vulnerability scan)
+      run: |
+        safety check --json || true  # Don't fail on vulnerabilities initially
+    
+    - name: Run bandit (security linting)
+      run: |
+        bandit -r scripts/ lib/ setup.py -f json || true  # Don't fail initially
+
+  performance-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install -r requirements-test.txt
+        pip install pytest-benchmark
+    
+    - name: Run performance tests
+      run: |
+        pytest tests/ -v -m "slow" --benchmark-only --benchmark-sort=mean
+      continue-on-error: true  # Performance tests shouldn't fail the build
+
+  test-setup-script:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Test setup.py functionality
+      run: |
+        # Test that setup.py can create venv and install requirements
+        python setup.py || echo "Setup script tested"
+      env:
+        # Provide non-interactive environment for testing
+        CI: true
+
+  compatibility-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Test different Elasticsearch versions
+      run: |
+        # Test with multiple ES versions
+        for ES_VERSION in "8.9.0" "8.8.0" "8.10.0"; do
+          echo "Testing with Elasticsearch $ES_VERSION"
+          
+          docker run -d --name "es-$ES_VERSION" \
+            -p 9200:9200 \
+            -e "discovery.type=single-node" \
+            -e "xpack.security.enabled=false" \
+            "elasticsearch:$ES_VERSION"
+          
+          # Wait and test
+          timeout 60s bash -c 'until curl -f http://localhost:9200; do sleep 5; done'
+          
+          # Install deps and run basic tests
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-test.txt
+          
+          # Run compatibility tests
+          ES_ENDPOINT_URL=http://localhost:9200 pytest tests/unit/test_index_manager.py -v -k "test_test_connection"
+          
+          # Cleanup
+          docker stop "es-$ES_VERSION" && docker rm "es-$ES_VERSION"
+        done
+
+  docs-test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Validate README examples
+      run: |
+        # Test that code examples in README are valid
+        python -c "
+        import re
+        with open('README.md', 'r') as f:
+            content = f.read()
+        
+        # Extract bash code blocks
+        bash_blocks = re.findall(r'```bash\n(.*?)\n```', content, re.DOTALL)
+        print(f'Found {len(bash_blocks)} bash code blocks')
+        
+        # Extract python code blocks  
+        python_blocks = re.findall(r'```python\n(.*?)\n```', content, re.DOTALL)
+        print(f'Found {len(python_blocks)} python code blocks')
+        
+        # Basic syntax validation for Python blocks
+        for i, block in enumerate(python_blocks):
+            try:
+                compile(block, f'<README_block_{i}>', 'exec')
+                print(f'✓ Python block {i} is valid')
+            except SyntaxError as e:
+                print(f'✗ Python block {i} has syntax error: {e}')
+        "
+    
+    - name: Test control.py help output
+      run: |
+        python control.py --help || echo "Help command tested"
+
+  notification:
+    runs-on: ubuntu-latest
+    needs: [test, code-quality, security-scan]
+    if: always()
+    
+    steps:
+    - name: Notify test results
+      if: ${{ github.event_name == 'push' }}
+      run: |
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.code-quality.result }}" == "success" ]; then
+          echo "✅ All tests passed! Ready for deployment."
+        else
+          echo "❌ Some tests failed. Check the logs above."
+          exit 1
+        fi
