@@ -6,6 +6,10 @@ import time
 import os
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import warnings
+
+# Suppress urllib3 warning about LibreSSL compatibility
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+", category=UserWarning)
 
 # Third-party libraries
 from tqdm import tqdm
@@ -117,7 +121,7 @@ def generate_news_articles(num_specific: int, num_general: int, output_filepath:
                     'primary_symbol': generated_data.get('primary_symbol', symbol),
                     'company_symbol': generated_data.get('company_symbol', None)
                 }
-                f.write(json.dumps(article) + '\\n')
+                f.write(json.dumps(article) + '\n')
                 news_articles_generated += 1
 
         # Generate general market news
@@ -147,7 +151,7 @@ def generate_news_articles(num_specific: int, num_general: int, output_filepath:
                     'primary_symbol': generated_data.get('primary_symbol', None),
                     'company_symbol': generated_data.get('company_symbol', None)
                 }
-                f.write(json.dumps(article) + '\\n')
+                f.write(json.dumps(article) + '\n')
                 news_articles_generated += 1
 
     return news_articles_generated
@@ -209,7 +213,7 @@ def generate_reports(num_specific: int, num_thematic: int, output_filepath: str)
                     'primary_symbol': generated_data.get('primary_symbol', symbol),
                     'company_symbol': generated_data.get('company_symbol', None)
                 }
-                f.write(json.dumps(report) + '\\n')
+                f.write(json.dumps(report) + '\n')
                 reports_generated += 1
 
         # Generate thematic reports
@@ -240,7 +244,7 @@ def generate_reports(num_specific: int, num_thematic: int, output_filepath: str)
                     'primary_symbol': generated_data.get('primary_symbol', None),
                     'company_symbol': generated_data.get('company_symbol', None)
                 }
-                f.write(json.dumps(report) + '\\n')
+                f.write(json.dumps(report) + '\n')
                 reports_generated += 1
 
     return reports_generated
@@ -251,8 +255,8 @@ if __name__ == "__main__":
     log_with_timestamp("Starting news and reports generation process...")
 
     # --- Control Flags ---
-    DO_GENERATE_NEWS = False
-    DO_GENERATE_REPORTS = False
+    DO_GENERATE_NEWS = True
+    DO_GENERATE_REPORTS = True
     DO_INGEST_NEWS = True
     DO_INGEST_REPORTS = True
 
@@ -266,10 +270,47 @@ if __name__ == "__main__":
         check_elasticsearch=needs_elasticsearch
     )
     if not is_valid:
-        print("ERROR: Configuration validation failed:")
+        print("WARNING: Configuration validation failed:")
         for error in errors:
             print(f"  - {error}")
-        sys.exit(1)
+        
+        # Check what's missing and disable appropriate features
+        es_missing = any("ES_API_KEY" in error for error in errors)
+        gemini_missing = any("GEMINI_API_KEY" in error for error in errors)
+        
+        if es_missing:
+            print("Disabling Elasticsearch ingestion.")
+            DO_INGEST_NEWS = False
+            DO_INGEST_REPORTS = False
+        
+        if gemini_missing:
+            print("Disabling content generation (requires GEMINI_API_KEY).")
+            DO_GENERATE_NEWS = False
+            DO_GENERATE_REPORTS = False
+        
+        # If no generation possible but files exist, we could still ingest them
+        if gemini_missing and not (DO_GENERATE_NEWS or DO_GENERATE_REPORTS):
+            # Check if existing files can be used for ingestion
+            news_file_exists = os.path.exists(GENERATED_NEWS_FILE)
+            reports_file_exists = os.path.exists(GENERATED_REPORTS_FILE)
+            
+            if (news_file_exists or reports_file_exists) and not es_missing:
+                print("Found existing data files. Ingestion could be performed if ES is configured.")
+                if news_file_exists:
+                    print(f"  • {GENERATED_NEWS_FILE} exists")
+                if reports_file_exists:
+                    print(f"  • {GENERATED_REPORTS_FILE} exists")
+            
+            if not news_file_exists and not reports_file_exists:
+                print("ERROR: No generation or ingestion tasks remaining. Please set GEMINI_API_KEY to generate content.")
+                print("You can configure API keys through the control app (Configure Settings).")
+                sys.exit(1)
+            elif es_missing:
+                print("INFO: Existing files found but cannot ingest without ES_API_KEY.")
+                print("You can configure API keys through the control app (Configure Settings).")
+                sys.exit(0)  # Exit successfully since there's nothing we can do
+        
+        print("Continuing with available features only...")
 
     # 2. Initialize Gemini model (only if generating)
     if DO_GENERATE_NEWS or DO_GENERATE_REPORTS:
@@ -318,7 +359,11 @@ if __name__ == "__main__":
             es_client = create_elasticsearch_client()
         except Exception as e:
             print(f"ERROR: Could not connect to Elasticsearch: {e}")
-            raise
+            print("Continuing with local file generation only. You can configure API keys through the control app (Configure Settings).")
+            es_client = None
+            # Disable ES ingestion flags to continue with file generation
+            DO_INGEST_NEWS = False
+            DO_INGEST_REPORTS = False
 
     # 6. Ingest Data into Elasticsearch in parallel (if enabled)
     ingestion_tasks = []
@@ -385,10 +430,41 @@ if __name__ == "__main__":
         print("Skipping all ingestion as no indices are enabled.")
 
     final_completion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"\n[{final_completion_timestamp}] ✅ All news and reports generation and ingestion processes completed successfully.")
-    sys.stdout.flush()
-    time.sleep(0.1)  # Ensure TaskExecutor processes completion message
     
-    print(f"[{final_completion_timestamp}] 🎉 Script execution finished - news and reports data ready!")
+    # Create summary of what was done
+    generated_items = []
+    original_generation_flags = {'news': True, 'reports': True}  # Original intent
+    current_generation_flags = {'news': DO_GENERATE_NEWS, 'reports': DO_GENERATE_REPORTS}
+    
+    for item, was_intended in original_generation_flags.items():
+        if was_intended and current_generation_flags[item]:
+            generated_items.append(item)
+    
+    ingested_items = []
+    original_ingestion_flags = {'news': True, 'reports': True}  # Original intent
+    current_ingestion_flags = {'news': DO_INGEST_NEWS, 'reports': DO_INGEST_REPORTS}
+    
+    for item, was_intended in original_ingestion_flags.items():
+        if was_intended and current_ingestion_flags[item]:
+            ingested_items.append(item)
+    
+    # Print detailed summary
+    print(f"\n[{final_completion_timestamp}] ✅ Script execution completed!")
+    if generated_items:
+        print(f"  📊 Generated: {', '.join(generated_items)}")
+    elif any(original_generation_flags.values()):
+        print("  📊 Generation: Skipped (GEMINI_API_KEY not configured)")
+        print("      💡 Configure API keys via: python3 control.py → Configure Settings")
+        
+    if ingested_items:
+        print(f"  🔍 Ingested to Elasticsearch: {', '.join(ingested_items)}")
+    elif any(original_ingestion_flags.values()):
+        # Some ingestion was intended but skipped
+        skipped_reason = "API keys not configured" if not ES_CONFIG.get('api_key') else "Connection failed"
+        print(f"  🔍 Elasticsearch ingestion: Skipped ({skipped_reason})")
+        print(f"      💡 Configure API keys via: python3 control.py → Configure Settings")
+    
+    if generated_items or ingested_items:
+        print(f"  🎉 Files available in: generated_data/")
     sys.stdout.flush()
     time.sleep(0.2)  # Final pause to ensure all messages are processed

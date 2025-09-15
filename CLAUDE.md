@@ -1193,7 +1193,8 @@ Major enhancement to shift from static holdings to dynamic trade-based positions
   "symbol": "AAPL",
   "trade_type": "buy",        // buy, sell, short, cover
   "order_type": "market",     // market, limit, stop
-  "order_status": "executed", // executed, cancelled
+  "order_status": "executed", // executed, cancelled, failed
+  "reason": "fully_filled",   // Status reasons (see below)
   "quantity": 50,
   "execution_price": 175.25,
   "trade_cost": 8762.50,
@@ -1201,6 +1202,18 @@ Major enhancement to shift from static holdings to dynamic trade-based positions
   "last_updated": "2025-08-28T14:30:00"
 }
 ```
+
+#### Order Status and Reasons
+**Status Distribution:**
+- **90% executed**: `reason: "fully_filled"`
+- **7% cancelled**: `reason: "user_cancelled"` or `"exchange_cancelled"` 
+- **3% failed**: `reason: "insufficient_funds"`, `"account_locked"`, or `"technical_issue"`
+
+**Realistic Failure Patterns:**
+- Failed trades have `execution_price: 0` and `trade_cost: 0`
+- Cancelled trades have `execution_price: 0` and `trade_cost: 0`
+- Large trades more likely to fail with `"insufficient_funds"`
+- Fraud scenarios have different failure rates (wash trading: higher cancellation, insider trading: lower failure)
 
 ### Implementation Status ✅ COMPLETED
 

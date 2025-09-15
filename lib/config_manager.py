@@ -214,7 +214,7 @@ class ConfigManager:
         self.current_overrides[key] = value
         
         # Also update the actual config in memory for immediate reflection
-        config = self.get_config()
+        config = self.get_current_config()
         target = config
         
         # Navigate to the parent of the target key

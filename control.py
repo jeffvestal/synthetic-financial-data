@@ -149,10 +149,14 @@ class SyntheticDataController:
                 elif choice == "5":
                     self._manage_indices()
                 elif choice == "6":
-                    self._configure_settings()
+                    self._update_timestamps()
                 elif choice == "7":
-                    self._dry_run_mode()
+                    self._configure_settings()
                 elif choice == "8":
+                    self._test_retry_es()
+                elif choice == "9":
+                    self._dry_run_mode()
+                elif choice == "10":
                     break
                     
             except KeyboardInterrupt:
@@ -178,6 +182,10 @@ class SyntheticDataController:
             self._check_indices()
         elif args.update_timestamps:
             self._update_timestamps(args.timestamp_offset)
+        elif args.timestamp_ranges:
+            self._update_timestamp_ranges(args)
+        elif args.regenerate_trades:
+            self._regenerate_trades()
         elif args.update_files:
             self._update_data_files(args.timestamp_offset)
         else:
@@ -260,13 +268,155 @@ class SyntheticDataController:
         """Update timestamps in data files."""
         self.menu_system.update_data_file_timestamps(offset_hours)
     
+    def _update_timestamp_ranges(self, args):
+        """Update timestamps with realistic ranges per data type."""
+        # Build command arguments
+        cmd_args = ['python3', 'update_es_timestamps_with_ranges.py']
+        
+        if args.trades_months:
+            cmd_args.extend(['--trades-months', str(args.trades_months)])
+        if args.news_months:
+            cmd_args.extend(['--news-months', str(args.news_months)])
+        if args.reports_months:
+            cmd_args.extend(['--reports-months', str(args.reports_months)])
+        if hasattr(args, 'dry_run') and args.dry_run:
+            cmd_args.append('--dry-run')
+        
+        self.console.print(f"🕐 [blue]Running timestamp range updater...[/blue]")
+        self.console.print(f"Command: {' '.join(cmd_args)}")
+        
+        import subprocess
+        result = subprocess.run(cmd_args, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            self.console.print(result.stdout)
+            self.console.print("✅ [green]Timestamp ranges updated successfully[/green]")
+        else:
+            self.console.print("❌ [red]Failed to update timestamp ranges[/red]")
+            if result.stderr:
+                self.console.print(f"Error: {result.stderr}")
+    
+    def _regenerate_trades(self):
+        """Regenerate trade activity using holdings-based approach."""
+        self.console.print("📈 [blue]Regenerating trade activity using holdings-based approach...[/blue]")
+        
+        import subprocess
+        cmd_args = ['python3', 'scripts/generate_holdings_based_trades.py']
+        
+        result = subprocess.run(cmd_args, capture_output=True, text=True)
+        
+        if result.returncode == 0:
+            self.console.print(result.stdout)
+            self.console.print("✅ [green]Trade activity regenerated successfully[/green]")
+            self.console.print("💡 [dim]Tip: Run 'python3 load_specific_indices.py --trades' to ingest to Elasticsearch[/dim]")
+        else:
+            self.console.print("❌ [red]Failed to regenerate trade activity[/red]")
+            if result.stderr:
+                self.console.print(f"Error: {result.stderr}")
+    
     def _manage_indices(self):
         """Manage Elasticsearch indices."""
         self.menu_system.show_index_management_menu()
     
+    def _update_timestamps(self):
+        """Update timestamps in Elasticsearch data."""
+        while True:
+            timestamp_options = self.menu_system.show_timestamp_menu()
+            
+            if timestamp_options is None:
+                break  # User chose back to main menu
+            
+            # Execute the timestamp update
+            success = self._execute_timestamp_update(timestamp_options)
+            
+            if success:
+                self.console.input("\n[dim]Press Enter to continue...[/dim]")
+            else:
+                # Ask if user wants to try again
+                if not Confirm.ask("Would you like to try again?", default=True):
+                    break
+    
+    def _execute_timestamp_update(self, options: dict) -> bool:
+        """Execute timestamp update with given options."""
+        try:
+            # Build command arguments
+            import subprocess
+            cmd = ["python3", "update_es_timestamps.py"]
+            
+            # Add offset if specified
+            if options.get("offset", 0) != 0:
+                cmd.extend(["--offset", str(options["offset"])])
+            
+            # Add specific indices if specified
+            if options.get("indices"):
+                # Convert full index names to short names for the script
+                short_names = []
+                for idx in options["indices"]:
+                    if idx == "financial_accounts":
+                        short_names.append("accounts")
+                    elif idx == "financial_holdings":
+                        short_names.append("holdings")
+                    elif idx == "financial_asset_details":
+                        short_names.append("assets")
+                    elif idx == "financial_news":
+                        short_names.append("news")
+                    elif idx == "financial_reports":
+                        short_names.append("reports")
+                
+                if short_names:
+                    cmd.extend(["--indices"] + short_names)
+            
+            # Add dry-run flag if specified
+            if options.get("dry_run", False):
+                cmd.append("--dry-run")
+            
+            # Show what we're about to execute
+            cmd_str = " ".join(cmd)
+            self.console.print(f"\n[dim]Executing: {cmd_str}[/dim]\n")
+            
+            # Execute the command with real-time output
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                universal_newlines=True,
+                bufsize=1
+            )
+            
+            # Stream output in real-time
+            while True:
+                output = process.stdout.readline()
+                if output == '' and process.poll() is not None:
+                    break
+                if output:
+                    # Print without extra newline since output already has one
+                    self.console.print(output.rstrip())
+            
+            # Get the return code
+            return_code = process.poll()
+            
+            if return_code == 0:
+                self.console.print("\n[green]✅ Timestamp update completed successfully![/green]")
+                return True
+            else:
+                self.console.print(f"\n[red]❌ Timestamp update failed with exit code {return_code}[/red]")
+                return False
+                
+        except FileNotFoundError:
+            self.console.print("[red]❌ update_es_timestamps.py script not found![/red]")
+            self.console.print("[dim]Make sure you're running from the project root directory.[/dim]")
+            return False
+        except Exception as e:
+            self.console.print(f"[red]❌ Error executing timestamp update: {e}[/red]")
+            return False
+    
     def _configure_settings(self):
         """Configure system settings and presets."""
         self.menu_system.show_configuration_menu(self.config_manager)
+    
+    def _test_retry_es(self):
+        """Test Elasticsearch connectivity and retry ingestion."""
+        self.menu_system.show_es_test_menu()
     
     def _dry_run_mode(self):
         """Show what would be executed without actually running."""
@@ -427,8 +577,20 @@ Examples:
                        help="Update timestamps in Elasticsearch to current time")
     parser.add_argument("--timestamp-offset", type=int, default=0,
                        help="Hours offset from now (negative for past, positive for future)")
+    parser.add_argument("--timestamp-ranges", action="store_true",
+                       help="Update timestamps with realistic time ranges per data type")
+    parser.add_argument("--trades-months", type=int, 
+                       help="Months range for trade execution timestamps (for --timestamp-ranges)")
+    parser.add_argument("--news-months", type=int,
+                       help="Months range for news publication dates (for --timestamp-ranges)")
+    parser.add_argument("--reports-months", type=int,
+                       help="Months range for report dates (for --timestamp-ranges)")
+    parser.add_argument("--regenerate-trades", action="store_true",
+                       help="Regenerate trade activity using holdings-based approach")
     parser.add_argument("--update-files", action="store_true",
                        help="Update timestamps in data files before loading")
+    parser.add_argument("--dry-run", action="store_true",
+                       help="Preview changes without applying them (for --timestamp-ranges)")
     parser.add_argument("--non-interactive", action="store_true",
                        help="Force non-interactive mode (no prompts)")
     parser.add_argument("--bulk-size", type=int, default=100,

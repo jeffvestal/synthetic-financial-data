@@ -35,6 +35,41 @@ from common_utils import (
     log_with_timestamp
 )
 
+# Import status/reason logic from generate_trades
+from generate_trades import STATUS_REASONS
+
+def determine_insider_trade_status_and_reason() -> Tuple[str, str]:
+    """
+    Determine order status and reason for insider trading scenarios.
+    Insider trading is more carefully planned, so lower failure rates.
+    """
+    # Very low failure rates for insider trading (highly planned)
+    failure_rate = 0.01  # 1% (much lower than normal trades)
+    cancellation_rate = 0.05  # 5% (lower than normal)
+    
+    rand = random.random()
+    
+    if rand < failure_rate:
+        # Failed trades - rare in insider trading
+        status = 'failed'
+        # Account locking more likely if detected
+        reason_weights = [0.3, 0.5, 0.2]  # insufficient_funds, account_locked, technical_issue
+        reason = random.choices(STATUS_REASONS['failed'], weights=reason_weights)[0]
+        
+    elif rand < (failure_rate + cancellation_rate):
+        # Cancelled trades - sometimes to avoid detection
+        status = 'cancelled'
+        # User cancellations more common (avoiding detection)
+        reason_weights = [0.8, 0.2]  # user_cancelled, exchange_cancelled
+        reason = random.choices(STATUS_REASONS['cancelled'], weights=reason_weights)[0]
+        
+    else:
+        # Executed trades
+        status = 'executed'
+        reason = 'fully_filled'
+    
+    return status, reason
+
 # Configuration
 INSIDER_TRADING_CONFIG = {
     'accounts_per_scenario': (5, 15),  # Range of accounts involved
@@ -268,16 +303,20 @@ def generate_insider_trading_scenario(
                 # Order type bias - insiders often use market orders for speed
                 order_type = random.choices(['market', 'limit'], weights=[0.7, 0.3])[0]
                 
+                # Determine status and reason
+                order_status, reason = determine_insider_trade_status_and_reason()
+                
                 trade = {
                     'trade_id': f"INSIDER-{uuid.uuid4().hex[:8]}-{int(trade_time.timestamp())}",
                     'account_id': account_id,
                     'symbol': symbol,
                     'trade_type': trade_type,
                     'order_type': order_type,
-                    'order_status': 'executed',
+                    'order_status': order_status,
+                    'reason': reason,
                     'quantity': float(quantity),
-                    'execution_price': round(execution_price, 2),
-                    'trade_cost': round(quantity * execution_price, 2),
+                    'execution_price': round(execution_price, 2) if order_status == 'executed' else 0,
+                    'trade_cost': round(quantity * execution_price, 2) if order_status == 'executed' else 0,
                     'execution_timestamp': trade_time.isoformat(),
                     'last_updated': get_current_timestamp(),
                     'scenario_type': 'insider_trading',
@@ -306,16 +345,20 @@ def generate_insider_trading_scenario(
             # Larger sell quantities to liquidate positions
             sell_quantity = int(quantity * random.uniform(2, 5))
             
+            # Determine status and reason for sell trades
+            sell_status, sell_reason = determine_insider_trade_status_and_reason()
+            
             sell_trade = {
                 'trade_id': f"INSIDER-SELL-{uuid.uuid4().hex[:8]}-{int(sell_time.timestamp())}",
                 'account_id': account_id,
                 'symbol': symbol,
                 'trade_type': 'sell',
                 'order_type': random.choices(['market', 'limit'], weights=[0.8, 0.2])[0],
-                'order_status': 'executed',
+                'order_status': sell_status,
+                'reason': sell_reason,
                 'quantity': float(sell_quantity),
-                'execution_price': round(post_news_price, 2),
-                'trade_cost': round(sell_quantity * post_news_price, 2),
+                'execution_price': round(post_news_price, 2) if sell_status == 'executed' else 0,
+                'trade_cost': round(sell_quantity * post_news_price, 2) if sell_status == 'executed' else 0,
                 'execution_timestamp': sell_time.isoformat(),
                 'last_updated': get_current_timestamp(),
                 'scenario_type': 'insider_trading',

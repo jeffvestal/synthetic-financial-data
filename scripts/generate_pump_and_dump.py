@@ -35,6 +35,54 @@ from common_utils import (
     log_with_timestamp
 )
 
+# Import status/reason logic from generate_trades
+from generate_trades import STATUS_REASONS
+
+def determine_pump_dump_status_and_reason(phase: str) -> Tuple[str, str]:
+    """
+    Determine order status and reason for pump and dump scenarios.
+    Different phases have different failure patterns.
+    """
+    # Different rates per phase
+    if phase == 'accumulation':
+        failure_rate = 0.02  # 2% (careful accumulation)
+        cancellation_rate = 0.08  # 8% (some hesitation)
+    elif phase == 'pump':
+        failure_rate = 0.015  # 1.5% (aggressive execution)
+        cancellation_rate = 0.05  # 5% (focused execution)
+    elif phase == 'dump':
+        failure_rate = 0.01  # 1% (urgent execution)
+        cancellation_rate = 0.03  # 3% (panic selling)
+    else:  # maintenance
+        failure_rate = 0.02  # 2%
+        cancellation_rate = 0.10  # 10% (more cautious)
+    
+    rand = random.random()
+    
+    if rand < failure_rate:
+        # Failed trades
+        status = 'failed'
+        if phase == 'dump':
+            # Account locking more likely during dump (detected activity)
+            reason_weights = [0.2, 0.6, 0.2]  # insufficient_funds, account_locked, technical_issue
+        else:
+            reason_weights = [0.4, 0.3, 0.3]  # insufficient_funds, account_locked, technical_issue
+        reason = random.choices(STATUS_REASONS['failed'], weights=reason_weights)[0]
+        
+    elif rand < (failure_rate + cancellation_rate):
+        # Cancelled trades
+        status = 'cancelled'
+        # Higher user cancellation in pump/dump (second thoughts)
+        reason_weights = [0.7, 0.3]  # user_cancelled, exchange_cancelled
+        reason = random.choices(STATUS_REASONS['cancelled'], weights=reason_weights)[0]
+        
+    else:
+        # Executed trades
+        status = 'executed'
+        reason = 'fully_filled'
+    
+    return status, reason
+
 # Configuration
 PUMP_AND_DUMP_CONFIG = {
     'accounts_per_scheme': (8, 20),  # Number of accounts in coordination
@@ -292,8 +340,8 @@ def generate_phase_trades(
                 price_variation = random.uniform(-0.005, 0.005)  # ±0.5%
                 execution_price = price * (1 + price_variation)
                 
-                # Order status (most executed, some cancelled for realism)
-                order_status = 'executed' if random.random() > 0.05 else 'cancelled'
+                # Determine order status and reason based on phase
+                order_status, reason = determine_pump_dump_status_and_reason(phase_name)
                 
                 trade = {
                     'trade_id': f"PUMP-{phase_name.upper()}-{uuid.uuid4().hex[:8]}-{int(trade_time.timestamp())}",
@@ -302,6 +350,7 @@ def generate_phase_trades(
                     'trade_type': trade_type,
                     'order_type': order_type,
                     'order_status': order_status,
+                    'reason': reason,
                     'quantity': float(quantity),
                     'execution_price': round(execution_price, 2) if order_status == 'executed' else 0,
                     'trade_cost': round(quantity * execution_price, 2) if order_status == 'executed' else 0,

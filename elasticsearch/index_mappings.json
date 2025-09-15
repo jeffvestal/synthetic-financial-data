@@ -185,6 +185,9 @@
         "order_status": {
           "type": "keyword"
         },
+        "reason": {
+          "type": "keyword"
+        },
         "quantity": {
           "type": "float"
         },

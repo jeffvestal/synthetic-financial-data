@@ -33,7 +33,14 @@ from common_utils import (
 # Trade type constants
 TRADE_TYPES = ['buy', 'sell', 'short', 'cover']
 ORDER_TYPES = ['market', 'limit', 'stop']
-ORDER_STATUSES = ['executed', 'cancelled']
+ORDER_STATUSES = ['executed', 'cancelled', 'failed']
+
+# Status reason mappings
+STATUS_REASONS = {
+    'executed': ['fully_filled'],
+    'cancelled': ['user_cancelled', 'exchange_cancelled'],
+    'failed': ['insufficient_funds', 'account_locked', 'technical_issue']
+}
 
 # Trade generation configuration from config
 TRADE_CONFIG = GENERATION_SETTINGS.get('trades', {})
@@ -53,6 +60,51 @@ def generate_trade_id(timestamp: datetime) -> str:
     date_str = timestamp.strftime("%Y%m%d")
     unique_id = str(uuid.uuid4())[:8]
     return f"TRD-{date_str}-{unique_id}"
+
+def determine_order_status_and_reason(account: Dict, quantity: float, trade_cost: float) -> Tuple[str, str]:
+    """
+    Determine order status and reason based on various factors.
+    
+    Args:
+        account: Account information with balance and risk profile
+        quantity: Number of shares
+        trade_cost: Total cost of trade
+        
+    Returns:
+        Tuple of (status, reason)
+    """
+    # Configuration for status distribution
+    cancellation_rate = TRADE_CONFIG.get('cancellation_rate', 0.07)  # 7%
+    failure_rate = TRADE_CONFIG.get('failure_rate', 0.03)  # 3%
+    
+    # Generate random value to determine status
+    rand = random.random()
+    
+    if rand < failure_rate:
+        # Failed trades
+        status = 'failed'
+        # Weight the reasons based on likelihood
+        reason_weights = [0.5, 0.3, 0.2]  # insufficient_funds, account_locked, technical_issue
+        reason = random.choices(STATUS_REASONS['failed'], weights=reason_weights)[0]
+        
+        # Insufficient funds is more likely for expensive trades
+        portfolio_value = account.get('total_portfolio_value', 100000)
+        if trade_cost > portfolio_value * 0.5:  # Trade > 50% of portfolio
+            reason = 'insufficient_funds'
+        
+    elif rand < (failure_rate + cancellation_rate):
+        # Cancelled trades
+        status = 'cancelled'
+        # Weight the reasons - user cancellations more common
+        reason_weights = [0.7, 0.3]  # user_cancelled, exchange_cancelled
+        reason = random.choices(STATUS_REASONS['cancelled'], weights=reason_weights)[0]
+        
+    else:
+        # Executed trades
+        status = 'executed'
+        reason = 'fully_filled'
+    
+    return status, reason
 
 def calculate_execution_price(
     base_price: float, 
@@ -200,21 +252,24 @@ def generate_trades_for_account(
         else:
             quantity = random.randint(10, 2000)
         
-        # Determine order status
-        cancellation_rate = TRADE_CONFIG.get('cancellation_rate', 0.07)
-        order_status = 'cancelled' if random.random() < cancellation_rate else 'executed'
+        # Calculate preliminary trade cost for status determination
+        preliminary_price = calculate_execution_price(
+            base_price, 
+            quantity, 
+            pattern['order_type'],
+            pattern['trade_type']
+        )
+        preliminary_cost = round(quantity * preliminary_price, 2)
         
-        # Calculate execution price (only for executed orders)
+        # Determine order status and reason
+        order_status, reason = determine_order_status_and_reason(account, quantity, preliminary_cost)
+        
+        # Set execution price and cost based on status
         if order_status == 'executed':
-            execution_price = calculate_execution_price(
-                base_price, 
-                quantity, 
-                pattern['order_type'],
-                pattern['trade_type']
-            )
-            trade_cost = round(quantity * execution_price, 2)
+            execution_price = preliminary_price
+            trade_cost = preliminary_cost
         else:
-            # Cancelled orders don't have execution price
+            # Failed and cancelled orders don't have execution price
             execution_price = 0
             trade_cost = 0
         
@@ -226,6 +281,7 @@ def generate_trades_for_account(
             'trade_type': pattern['trade_type'],
             'order_type': pattern['order_type'],
             'order_status': order_status,
+            'reason': reason,
             'quantity': float(quantity),
             'execution_price': execution_price,
             'trade_cost': trade_cost,

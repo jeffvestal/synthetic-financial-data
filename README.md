@@ -346,7 +346,9 @@ python3 control.py --status        # Check status
 synthetic-financial-data/
 ├── control.py                 # Interactive control script
 ├── load_all_data.py          # Fast data loader (recommended)
-├── update_es_timestamps.py   # Fast timestamp updater
+├── update_es_timestamps.py               # Fast timestamp updater
+├── update_es_timestamps_with_ranges.py   # Realistic timestamp ranges
+├── scripts/generate_holdings_based_trades.py  # Holdings-based trade generation
 ├── requirements.txt          # Dependencies
 ├── scripts/                  # Core generation scripts
 ├── lib/                      # Control panel libraries
@@ -502,6 +504,7 @@ Realistic trading activity with fraud scenario support:
   "trade_type": "buy",
   "order_type": "market", 
   "order_status": "executed",
+  "reason": "fully_filled",
   "quantity": 1978.0,
   "execution_price": 178.01,
   "trade_cost": 352103.78,
@@ -511,6 +514,13 @@ Realistic trading activity with fraud scenario support:
   "pump_scheme_id": "SCHEME-12345678"     // Links related fraud trades
 }
 ```
+
+**Order Status & Reasons:**
+- **executed** (90%): `reason: "fully_filled"`
+- **cancelled** (7%): `reason: "user_cancelled"` or `"exchange_cancelled"`
+- **failed** (3%): `reason: "insufficient_funds"`, `"account_locked"`, or `"technical_issue"`
+
+Failed and cancelled trades have zero execution_price and trade_cost.
 
 </details>
 
@@ -584,6 +594,143 @@ GET /financial_trades/_search
 We welcome contributions! Please see our contributing guidelines and feel free to submit issues or pull requests.
 
 For support, report issues at: https://github.com/anthropics/claude-code/issues
+
+## 📄 License
+
+## 📈 Advanced Trade Generation
+
+### Holdings-Based Trade Generation
+
+Create realistic trade histories that explain how accounts acquired their current positions, plus additional trading activity.
+
+#### Key Features
+- **Every current holding** has corresponding acquisition trades that sum to exact quantities
+- **Sold-off positions** show complete buy → sell cycles (net position = 0)  
+- **Speculative trading** includes day trading, swing trades, failed speculation
+- **Realistic patterns** with proper bid/ask spreads, slippage, and timing
+
+#### Standalone Usage
+```bash
+# Generate holdings-based trades (replaces existing trade data)
+python3 scripts/generate_holdings_based_trades.py
+
+# The script automatically:
+# - Loads current holdings for all 7,000 accounts
+# - Creates acquisition trades that explain current positions
+# - Adds 2-5 "sold-off" positions per account with complete trading cycles  
+# - Includes day trading, swing trades, and failed speculation
+# - Generates 400,000+ realistic trades with proper timing
+```
+
+#### Control Script Usage
+```bash
+# Interactive menu option
+python3 control.py
+# Select: "⚙️ Custom Generation" → "🔄 Regenerate Trade Activity"
+
+# Command line
+python3 control.py --regenerate-trades
+```
+
+#### Trade Generation Patterns
+
+**Phase 1: Current Holdings (70%/20%/10%)**
+- **70%**: Single BUY trade for full quantity
+- **20%**: Multiple partial BUYs (2-4 trades) that sum to current quantity  
+- **10%**: Complex BUY/SELL history with net result = current position
+
+**Phase 2: Sold-Off Positions (2-5 per account)**
+- **Simple flip**: Buy all → Sell all
+- **Accumulation**: Multiple buys → Single sell
+- **Trading cycles**: Multiple buy/sell rounds → Final sale
+
+**Phase 3: Speculative Activity (Based on Risk Profile)**
+- **Day Trading** (30%): Same-day buy/sell, small profit/loss
+- **Short-term Flips** (30%): 1-7 day holds for quick gains
+- **Swing Trading** (20%): 1-4 week positions  
+- **Failed Speculation** (20%): Single buys with no corresponding sells
+
+**Volume by Risk Profile:**
+```
+Conservative: 1-5 speculative trades
+Medium: 5-18 speculative trades  
+High: 8-25 speculative trades
+Very High: 10-30 speculative trades
+```
+
+### Realistic Timestamp Management
+
+Fix the "all timestamps are identical" problem with distributed time ranges per data type.
+
+#### The Problem
+Standard timestamp updater sets everything to the same time:
+```bash
+# BAD: Everything gets identical timestamps
+python3 update_es_timestamps.py --offset -24  # All 24 hours ago
+```
+
+#### The Solution
+Use range-based timestamp distribution:
+```bash
+# GOOD: Realistic time ranges per data type
+python3 update_es_timestamps_with_ranges.py
+```
+
+#### Standalone Usage
+
+**Default Ranges (Recommended):**
+```bash
+# Apply intelligent defaults per data type
+python3 update_es_timestamps_with_ranges.py
+
+# Trades: 4 months distributed execution times
+# News: 2 months of publication dates  
+# Reports: 6 months of quarterly/monthly reports
+# Holdings: 24 months of purchase dates
+# Accounts: 1 month of recent updates
+# Assets: 1 month of current price updates
+```
+
+**Custom Ranges:**
+```bash
+# Customize ranges per data type
+python3 update_es_timestamps_with_ranges.py --trades-months 6 --news-months 1
+
+# Single index with specific range
+python3 update_es_timestamps_with_ranges.py --index financial_trades --range-months 3
+
+# Apply same range to everything
+python3 update_es_timestamps_with_ranges.py --all-months 4
+
+# Preview changes first
+python3 update_es_timestamps_with_ranges.py --dry-run
+```
+
+#### Control Script Usage
+```bash
+# Interactive menu option  
+python3 control.py
+# Select: "🕐 Update Timestamps" → "📈 Realistic Time Ranges"
+
+# Command line options
+python3 control.py --update-timestamps --trades-months 6
+python3 control.py --timestamp-ranges --dry-run
+```
+
+#### Realistic Timestamp Relationships
+- `execution_timestamp` → Random within range
+- `last_updated` → Always 1-24 hours **after** execution  
+- `published_date` → Random within range
+- `last_updated` → Always **after** published_date
+- `purchase_date` → Distributed over months/years
+- `report_date` → Realistic quarterly/monthly schedule
+
+#### Results
+- **Before**: All 694K trades have identical timestamps
+- **After**: Realistic distribution over months with proper relationships
+- **Performance**: Updates 694K+ documents in ~30 seconds using bulk operations
+
+---
 
 ## 📄 License
 

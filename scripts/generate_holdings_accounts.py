@@ -6,6 +6,10 @@ import sys
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+import warnings
+
+# Suppress urllib3 warning about LibreSSL compatibility
+warnings.filterwarnings("ignore", message="urllib3 v2 only supports OpenSSL 1.1.1+", category=UserWarning)
 
 # Third-party libraries
 from faker import Faker
@@ -236,7 +240,7 @@ if __name__ == "__main__":
     print(f"[{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}] Starting data generation process...")
 
     # --- Control Flags for Accounts, Holdings, Assets ---
-    DO_GENERATE_ACCOUNTS_AND_HOLDINGS = False  # Controls generation of all three related files
+    DO_GENERATE_ACCOUNTS_AND_HOLDINGS = True  # Controls generation of all three related files
     DO_INGEST_ACCOUNTS = True
     DO_INGEST_HOLDINGS = True
     DO_INGEST_ASSET_DETAILS = True
@@ -245,8 +249,13 @@ if __name__ == "__main__":
     # ES credentials validation for ingestion
     if (not ES_CONFIG['endpoint_url'] or not ES_CONFIG['api_key']) and \
             (DO_INGEST_ACCOUNTS or DO_INGEST_HOLDINGS or DO_INGEST_ASSET_DETAILS):
-        print("ERROR: ES_ENDPOINT_URL or ES_API_KEY environment variables are not set. Cannot ingest data. Exiting.")
-        sys.exit(1)
+        print("WARNING: ES_ENDPOINT_URL or ES_API_KEY environment variables are not set.")
+        print("Disabling Elasticsearch ingestion. Files will be generated locally only.")
+        print("You can configure API keys through the control app (Configure Settings).")
+        # Disable ingestion flags to continue with local generation
+        DO_INGEST_ACCOUNTS = False
+        DO_INGEST_HOLDINGS = False
+        DO_INGEST_ASSET_DETAILS = False
 
     # 2. Generate Accounts, Holdings, and Asset Details (if enabled)
     if DO_GENERATE_ACCOUNTS_AND_HOLDINGS:
@@ -282,7 +291,12 @@ if __name__ == "__main__":
             
         except Exception as e:
             print(f"ERROR: Could not connect to Elasticsearch. Please check your Endpoint URL and API Key. Error: {e}")
-            raise
+            print("Continuing with local file generation only. You can configure API keys through the control app (Configure Settings).")
+            es_client = None
+            # Disable ES ingestion flags to continue with file generation
+            DO_INGEST_ACCOUNTS = False
+            DO_INGEST_HOLDINGS = False  
+            DO_INGEST_ASSET_DETAILS = False
 
 
     # 5. Ingest Data into Elasticsearch in parallel (if enabled)
@@ -352,10 +366,43 @@ if __name__ == "__main__":
         print("Skipping all ingestion as no indices are enabled.")
 
     final_completion_timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    print(f"\n[{final_completion_timestamp}] ✅ All data generation and ingestion processes completed successfully.")
-    sys.stdout.flush()
-    time.sleep(0.1)  # Ensure TaskExecutor processes completion message
     
-    print(f"[{final_completion_timestamp}] 🎉 Script execution finished - accounts and holdings data ready!")
+    # Create summary of what was done
+    generated_items = []
+    if DO_GENERATE_ACCOUNTS_AND_HOLDINGS:
+        generated_items.extend(["accounts", "holdings", "asset details"])
+    
+    ingested_items = []
+    original_flags = {
+        'accounts': True,  # These were the original intent
+        'holdings': True,
+        'asset_details': True
+    }
+    current_flags = {
+        'accounts': DO_INGEST_ACCOUNTS,
+        'holdings': DO_INGEST_HOLDINGS, 
+        'asset_details': DO_INGEST_ASSET_DETAILS
+    }
+    
+    for item, was_intended in original_flags.items():
+        if was_intended and current_flags[item]:
+            ingested_items.append(item)
+    
+    # Print detailed summary
+    print(f"\n[{final_completion_timestamp}] ✅ Script execution completed!")
+    if generated_items:
+        print(f"  📊 Generated: {', '.join(generated_items)}")
+    else:
+        print("  📊 Generation: Skipped (flags disabled)")
+        
+    if ingested_items:
+        print(f"  🔍 Ingested to Elasticsearch: {', '.join(ingested_items)}")
+    elif any(original_flags.values()):
+        # Some ingestion was intended but skipped
+        skipped_reason = "API keys not configured" if not ES_CONFIG.get('api_key') else "Connection failed"
+        print(f"  🔍 Elasticsearch ingestion: Skipped ({skipped_reason})")
+        print(f"      💡 Configure API keys via: python3 control.py → Configure Settings")
+    
+    print(f"  🎉 Files available in: generated_data/")
     sys.stdout.flush()
     time.sleep(0.2)  # Final pause to ensure all messages are processed

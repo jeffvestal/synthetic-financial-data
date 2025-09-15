@@ -35,6 +35,41 @@ from common_utils import (
     log_with_timestamp
 )
 
+# Import status/reason logic from generate_trades
+from generate_trades import STATUS_REASONS
+
+def determine_wash_trade_status_and_reason(trade_cost: float) -> Tuple[str, str]:
+    """
+    Determine order status and reason for wash trading scenarios.
+    Wash trading has different failure patterns than normal trading.
+    """
+    # Lower failure rates for wash trading (more careful/coordinated)
+    failure_rate = 0.02  # 2% (lower than normal trades)
+    cancellation_rate = WASH_TRADING_CONFIG.get('cancellation_rate', 0.20)  # 20%
+    
+    rand = random.random()
+    
+    if rand < failure_rate:
+        # Failed trades - less likely in coordinated wash trading
+        status = 'failed'
+        # Technical issues more likely than funds problems in wash trading
+        reason_weights = [0.2, 0.3, 0.5]  # insufficient_funds, account_locked, technical_issue
+        reason = random.choices(STATUS_REASONS['failed'], weights=reason_weights)[0]
+        
+    elif rand < (failure_rate + cancellation_rate):
+        # Cancelled trades - higher rate to create cover
+        status = 'cancelled'
+        # Exchange cancellations more common in high-frequency wash trading
+        reason_weights = [0.4, 0.6]  # user_cancelled, exchange_cancelled
+        reason = random.choices(STATUS_REASONS['cancelled'], weights=reason_weights)[0]
+        
+    else:
+        # Executed trades
+        status = 'executed'
+        reason = 'fully_filled'
+    
+    return status, reason
+
 # Configuration
 WASH_TRADING_CONFIG = {
     'accounts_per_ring': (2, 4),  # Number of accounts in wash trading ring
@@ -232,9 +267,11 @@ def generate_wash_trading_session(
         price_direction = random.choice([-1, 1])
         trade_price = base_price * (1 + (price_direction * price_spread))
         
-        # Determine if order is cancelled
-        is_cancelled = random.random() < WASH_TRADING_CONFIG['cancellation_rate']
-        order_status = 'cancelled' if is_cancelled else 'executed'
+        # Calculate trade cost for status determination
+        trade_cost = round(quantity * trade_price, 2)
+        
+        # Determine order status and reason
+        order_status, reason = determine_wash_trade_status_and_reason(trade_cost)
         
         # Create matching sell and buy orders
         trade_id_base = f"WASH-{uuid.uuid4().hex[:8]}-{int(trade_time.timestamp())}"
@@ -247,6 +284,7 @@ def generate_wash_trading_session(
             'trade_type': 'sell',
             'order_type': random.choice(['market', 'limit']),
             'order_status': order_status,
+            'reason': reason,
             'quantity': float(quantity),
             'execution_price': round(trade_price, 2) if order_status == 'executed' else 0,
             'trade_cost': round(quantity * trade_price, 2) if order_status == 'executed' else 0,
@@ -266,6 +304,7 @@ def generate_wash_trading_session(
             'trade_type': 'buy',
             'order_type': random.choice(['market', 'limit']),
             'order_status': order_status,
+            'reason': reason,
             'quantity': float(quantity),
             'execution_price': round(trade_price, 2) if order_status == 'executed' else 0,
             'trade_cost': round(quantity * trade_price, 2) if order_status == 'executed' else 0,

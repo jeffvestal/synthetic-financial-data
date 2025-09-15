@@ -31,7 +31,7 @@ INDEX_CONFIG = {
     'trades': ('generated_data/financial_trades.jsonl', 'financial_trades', 'trade_id'),  # NEW
     'holdings': ('generated_data/generated_holdings.jsonl', 'financial_holdings', 'holding_id'),
     'assets': ('generated_data/generated_asset_details.jsonl', 'financial_asset_details', 'symbol'),
-    'news': ('generated_data/generated_news.jsonl', 'financial_news', 'article_id'),
+    'news': ('generated_data/generated_controlled_news.jsonl', 'financial_news', 'article_id'),
     'reports': ('generated_data/generated_reports.jsonl', 'financial_reports', 'report_id'),
 }
 
