@@ -18,6 +18,8 @@ load_dotenv()
 ES_CONFIG = {
     'endpoint_url': os.getenv("ES_ENDPOINT_URL", "https://localhost:9200"),
     'api_key': os.getenv("ES_API_KEY"),
+    'username': os.getenv("ES_USERNAME"),
+    'password': os.getenv("ES_PASSWORD"),
     'bulk_batch_size': 100,
     'request_timeout': 60,
     'verify_certs': False,

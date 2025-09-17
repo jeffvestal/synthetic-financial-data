@@ -199,12 +199,21 @@ def create_elasticsearch_client() -> Elasticsearch:
         ValueError: If connection fails
     """
     try:
-        es_client = Elasticsearch(
-            ES_CONFIG['endpoint_url'],
-            api_key=ES_CONFIG['api_key'],
-            request_timeout=ES_CONFIG['request_timeout'],
-            verify_certs=ES_CONFIG['verify_certs']
-        )
+        es_kwargs = {
+            "hosts": [ES_CONFIG['endpoint_url']],
+            "request_timeout": ES_CONFIG['request_timeout'],
+            "verify_certs": ES_CONFIG['verify_certs']
+        }
+
+        if ES_CONFIG.get('api_key'):
+            es_kwargs['api_key'] = ES_CONFIG['api_key']
+        elif ES_CONFIG.get('username') and ES_CONFIG.get('password'):
+            es_kwargs['basic_auth'] = (
+                ES_CONFIG['username'],
+                ES_CONFIG['password']
+            )
+        
+        es_client = Elasticsearch(**es_kwargs)
         
         # Test connection
         if not es_client.info():
@@ -214,7 +223,8 @@ def create_elasticsearch_client() -> Elasticsearch:
         return es_client
         
     except Exception as e:
-        print(f"ERROR: Could not connect to Elasticsearch. Please check your Endpoint URL and API Key. Error: {e}")
+        print("ERROR: Could not connect to Elasticsearch. Please check your Endpoint URL and credentials."
+              f" Error: {e}")
         raise
 
 def _read_and_chunk_from_file(filepath: str, index_name: str, id_key_in_doc: str, batch_size: int,
