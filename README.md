@@ -1,3 +1,5 @@
+**NOTE** For a larger dataset that include trade history switch to the [fraud-scenarios](https://github.com/jeffvestal/synthetic-financial-data/tree/fraud_scenarios?tab=readme-ov-file#synthetic-financial-data-generator-) branch.
+
 # Synthetic Financial Data Generator 🏦
 
 Generate realistic financial datasets in seconds. Create accounts, holdings, news articles, and reports with AI-generated content, ready for Elasticsearch.
