@@ -19,6 +19,8 @@ All data uses Google's Gemini AI for realistic content and loads into Elasticsea
 
 ## 🚀 Quick Start
 
+**NOTE** For a larger dataset that include trade history switch to the [fraud-scenarios](https://github.com/jeffvestal/synthetic-financial-data/tree/fraud_scenarios?tab=readme-ov-file#synthetic-financial-data-generator-) branch.
+
 Get running in 30 seconds:
 
 ### 1. Install
