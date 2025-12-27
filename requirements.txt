@@ -4,6 +4,7 @@ elasticsearch>=8.0.0
 faker>=15.0.0
 tqdm>=4.64.0
 python-dotenv>=0.19.0
+urllib3>=1.26.0
 
 # Interactive control script dependencies
 rich>=13.0.0
